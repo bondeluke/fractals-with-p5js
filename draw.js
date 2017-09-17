@@ -5,15 +5,18 @@ function setup() {
 	frameRate(60);
 	createCanvas(900, 700);
 	
-	var iterations = 12;
-	var angle = 73;
-	var multiplier = 0.65;
-	var trunkHeight = 232;
-	var sliderMargin = 10;
+	var iterations = 11;
+	var angle = 54;
+	var multiplier = 0.6;
+	var trunkHeight = 300;
+    var sliderMargin = 10;
+    var angleVariation = 0;
+    var multiplerVariation = 0;
+    var angleMultiplier = -1;
 	var sliderLeft = sliderMargin;
 	var sliderRight = width - sliderMargin - 180;
 	
-	tree = new Tree(width/2, height - 50, iterations, angle, multiplier);
+	tree = new Tree(width/2, height - 50);
 		
 	var iterationSlider = new Slider(sliderRight, height - sliderMargin - 60, 0, 12, "Iterations");
 	iterationSlider.subscribeToValueChangeEvent(tree.setIterations.bind(tree));
@@ -21,7 +24,7 @@ function setup() {
 	
 	var heightSlider = new Slider(sliderRight, height - sliderMargin*2 - 120, trunkHeight - 100, trunkHeight + 200, "Trunk height");
 	heightSlider.subscribeToValueChangeEvent(tree.setTrunkHeight.bind(tree));
-	heightSlider.setValue(trunkHeight)
+    heightSlider.setValue(trunkHeight);
 	
 	var angleSlider = new Slider(sliderLeft, height - sliderMargin - 60, 0, 180, "Angle");
 	angleSlider.subscribeToValueChangeEvent(tree.setAngle.bind(tree));
@@ -29,9 +32,21 @@ function setup() {
 	
 	var multiplierSlider = new Slider(sliderLeft, height - sliderMargin*2 - 120, 0.4, 0.8, "Multiplier", 2);
 	multiplierSlider.subscribeToValueChangeEvent(tree.setMultiplier.bind(tree));
-	multiplierSlider.setValue(multiplier)
+    multiplierSlider.setValue(multiplier);
+
+    var angleVariationSlider = new Slider(sliderLeft + 180 + sliderMargin, height - sliderMargin - 60, 0, 20, "Angle variation");
+    angleVariationSlider.subscribeToValueChangeEvent(tree.setAngleVariation.bind(tree));
+    angleVariationSlider.setValue(angleVariation);
+
+    var multiplerVariationSlider = new Slider(sliderRight - 180 - sliderMargin, height - sliderMargin - 60, 0, 0.2, "Multiplier variation", 2);
+    multiplerVariationSlider.subscribeToValueChangeEvent(tree.setMultiplierVariation.bind(tree));
+    multiplerVariationSlider.setValue(multiplerVariation);
+
+    var angleMultiplierSlider = new Slider(sliderRight - 180 - sliderMargin, height - sliderMargin - 120 - sliderMargin, -4, 4, "Angle multiplier", 1);
+    angleMultiplierSlider.subscribeToValueChangeEvent(tree.setAngleMultiplier.bind(tree));
+    angleMultiplierSlider.setValue(angleMultiplier);
 	
-	sliders = [iterationSlider, angleSlider, multiplierSlider, heightSlider];
+    sliders = [iterationSlider, angleSlider, multiplierSlider, heightSlider, angleVariationSlider, multiplerVariationSlider, angleMultiplierSlider];
 }
 
 function draw() {
@@ -87,7 +102,7 @@ Slider.prototype.backgroundColor = 240;
 Slider.prototype.getValue = function(){
 	var range = this.maxValue - this.minValue;
 	var magnitude = (this.sliderX - this.minSliderX) / (this.maxSliderX - this.minSliderX);
-	return (magnitude * range + this.minValue).toFixed(this.precision);
+	return (magnitude * range + this.minValue);
 }
 
 Slider.prototype.subscribeToValueChangeEvent = function(listener){
@@ -95,7 +110,7 @@ Slider.prototype.subscribeToValueChangeEvent = function(listener){
 }
 
 Slider.prototype.getDisplayValue = function() {
-	return this.label + ": " + this.getValue().toString();
+	return this.label + ": " + this.getValue().toFixed(this.precision).toString();
 }
 
 Slider.prototype.onDraw = function(){
@@ -165,19 +180,22 @@ Branch.prototype.onDraw = function(){
 	pop();
 }
 
-function Tree(xPos, yPos, iterations, angle, multiplier) {
+function Tree(xPos, yPos) {
 	this.x = xPos;
 	this.y = yPos;
-	this.trunkHeight = 200;
-	this.iterations = iterations;
-	this.angle = angle; // in degrees;
-	this.multiplier = multiplier;
+    this.trunkHeight = 200;
+    this.angleVariation = 0;
+    this.multiplierVariation = 0;
+	this.iterations = 10;
+	this.angle = 45; // in degrees;
+    this.multiplier = 0.6;
+    this.angleMultiplier = -1;
 	this.repopulateBranches();
 }
 
 Tree.prototype.repopulateBranches = function(){
 	this.branches = [];
-	var thicknessMultipler = 0.65
+    var thicknessMultipler = 0.65;
 	var thickness = max(this.iterations * thicknessMultipler, 1);
 	
 	var v = createVector(0, -this.trunkHeight);
@@ -189,8 +207,8 @@ Tree.prototype.repopulateBranches = function(){
 		thickness = max(thickness * thicknessMultipler, 1);
 		for(var j = 0; j < branchesToProcess.length; j++){
 			var b = branchesToProcess[j];
-			newBranches.push(this.createSprout(b, this.angle, thickness));
-			newBranches.push(this.createSprout(b, -this.angle, thickness));
+			newBranches.push(this.createSprout(b, 1, thickness));
+			newBranches.push(this.createSprout(b, this.angleMultiplier, thickness));
 		}
 		this.branches = this.branches.concat(branchesToProcess);
 		branchesToProcess = newBranches;
@@ -200,13 +218,12 @@ Tree.prototype.repopulateBranches = function(){
 	this.branches = this.branches.concat(branchesToProcess);
 }
 
-Tree.prototype.createSprout = function(branch, angle, thickness){
-	debugger;
+Tree.prototype.createSprout = function(branch, angleMultiplier, thickness){
 	var v = createVector(branch.v.x, branch.v.y);
-	var r = 0;
-	var newAngle = angle + r;
-	v.rotate(radians(newAngle));
-	v.setMag(v.mag() * this.multiplier);
+    var r = getRandomInt(-1 * this.angleVariation, this.angleVariation);
+    var angle = (angleMultiplier * this.angle) + r;
+    v.rotate(radians(angle));
+    v.setMag(v.mag() * (this.multiplier + getRandomArbitrary(-1 * this.multiplierVariation, this.multiplierVariation)));
 	return new Branch(branch.x2, branch.y2, v, thickness);
 }
 
@@ -236,8 +253,32 @@ Tree.prototype.setTrunkHeight = function(height){
 	this.repopulateBranches();
 }
 
+Tree.prototype.setAngleVariation = function (variation) {
+    this.angleVariation = variation;
+    this.repopulateBranches();
+}
+
+Tree.prototype.setMultiplierVariation = function (variation) {
+    this.multiplierVariation = variation;
+    this.repopulateBranches();
+}
+
+Tree.prototype.setAngleMultiplier = function (multiplier) {
+    this.angleMultiplier = multiplier;
+    this.repopulateBranches();
+}
+
 function getRandomInt(min, max) {
 	min = Math.ceil(min);
 	max = Math.floor(max);
 	return Math.floor(Math.random() * (max - min)) + min; //The maximum is exclusive and the minimum is inclusive
+}
+
+function getRandomArbitrary(min, max) {
+    return Math.random() * (max - min) + min;
+}
+
+function round(x, base) {
+    var pow = Math.pow(base || 10, x);
+    return +(Math.round(this * pow) / pow);
 }
