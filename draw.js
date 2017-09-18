@@ -7,16 +7,19 @@ function setup() {
     createCanvas(900, 900);
 
     var initialState = {
-        "trunkHeight": 200,
+        "trunkHeight": 245,
         "angleVariation": 0,
         "multiplierVariation": 0,
-        "iterations": 12,
-        "angle": 73.92857142857143,
-        "multiplier": 0.6757142857142857,
-        "angleMultiplier": -0.37142857142857144,
-        "x": 452,
-        "y": 666,
-        "trunkThickness": 15
+        "iterations": 13,
+        "angle": 72,
+        "multiplier": 0.68,
+        "angleMultiplier": -0.35,
+        "x": 429,
+        "y": 699,
+        "trunkThickness": 20,
+        "trunkColor": [50, 80, 90, 256],
+        "colorGradient": [15, 6, 2, 0],
+        "thicknessMultiplier": 0.81
     };
 
     tree = new Tree(width / 2, height - 250);
@@ -24,12 +27,12 @@ function setup() {
     tree.setState(initialState);
 
     sliders = [
-        new Slider(0, 12, "Iterations", () => tree.iterations, v => tree.iterations = v),
+        new Slider(0, 13, "Iterations", () => tree.iterations, v => tree.iterations = v),
         new Slider(0.4, 0.8, "Length multiplier", () => tree.multiplier, v => tree.multiplier = v, 2),
         new Slider(0, 0.2, "Multiplier variation", () => tree.multiplierVariation, v => tree.multiplierVariation = v, 2),
         new Slider(0, 500, "Trunk height", () => tree.trunkHeight, v => tree.trunkHeight = v),
         new Slider(0, 180, "Angle", () => tree.angle, v => tree.angle = v),
-        new Slider(-4, 4, "Angle multiplier", () => tree.angleMultiplier, v => tree.angleMultiplier = v, 1),
+        new Slider(-4, 4, "Angle multiplier", () => tree.angleMultiplier, v => tree.angleMultiplier = v, 2),
         new Slider(0, 20, "Angle variation", () => tree.angleVariation, v => tree.angleVariation = v),
         new Slider(1, 20, "Trunk thickness", () => tree.trunkThickness, v => tree.trunkThickness = v)
     ];
@@ -78,6 +81,7 @@ function Slider(minValue, maxValue, label, get, set, precision = 0) {
     this.label = label;
     this.precision = precision;
     this.valueChangeListeners = [];
+    this.controlColor = [220, 180, 200, 220];
 }
 
 Slider.prototype.setPosition = function (xPos, yPos) {
@@ -95,7 +99,6 @@ Slider.prototype.width = 180;
 Slider.prototype.margin = 5;
 Slider.prototype.diameter = 30;
 Slider.prototype.controlSizeRatio = 0.55;
-Slider.prototype.controlColor = [220, 180, 200, 220];
 Slider.prototype.backgroundColor = 240;
 
 Slider.prototype.getValue = function (sliderX) {
@@ -117,6 +120,7 @@ Slider.prototype.render = function () {
     fill(this.controlColor);
     ellipse(this.getSliderX(), this.sliderY, this.diameter, this.diameter);
     fill(0);
+    strokeWeight(0);
     text(this.getDisplayValue(), this.minSliderX, this.y + this.height - this.sliderHeight - 1);
     pop();
 }
@@ -152,22 +156,26 @@ Slider.prototype.setValue = function (value) {
     }
 }
 
-function Branch(x, y, v, weight) {
+// Branch
+function Branch(x, y, v, weight, color) {
     this.x = x;
     this.y = y;
     this.v = v;
     this.x2 = x + v.x;
     this.y2 = y + v.y;
     this.weight = weight;
+    this.color = color;
 }
 
 Branch.prototype.render = function () {
     push();
     strokeWeight(this.weight);
+    stroke(this.color);
     line(this.x, this.y, this.x2, this.y2);
     pop();
 }
 
+// Tree
 function Tree(xPos, yPos) {
     this.x = xPos;
     this.y = yPos;
@@ -179,24 +187,29 @@ function Tree(xPos, yPos) {
     this.multiplier = 0.6;
     this.angleMultiplier = -1;
     this.trunkThickness = 5;
+    this.trunkColor = [0, 0, 0, 256];
+    this.colorGradient = [0, 0, 0, 0];
+    this.thicknessMultiplier = 0.65;
 }
 
 Tree.prototype.repopulateBranches = function () {
     this.branches = [];
-    var thicknessMultipler = 0.65;
     var thickness = this.trunkThickness;
+    var c = this.trunkColor;
+    var g = this.colorGradient;
 
     var v = createVector(0, -this.trunkHeight);
-    var trunk = new Branch(this.x, this.y, v, thickness);
+    var trunk = new Branch(this.x, this.y, v, thickness, c);
     var branchesToProcess = [trunk];
     var newBranches = [];
 
-    for (var i = 0; i < this.iterations; i++) {
-        thickness = max(thickness * thicknessMultipler, 1);
+    for (var i = 1; i <= this.iterations; i++) {
+        thickness = max(thickness * this.thicknessMultiplier, 1);
+        var newColor = [c[0] + i * g[0], c[1] + i * g[1], c[2] + i * g[2], 256];
         for (var j = 0; j < branchesToProcess.length; j++) {
             var b = branchesToProcess[j];
-            newBranches.push(this.createSprout(b, 1, thickness));
-            newBranches.push(this.createSprout(b, this.angleMultiplier, thickness));
+            newBranches.push(this.createSprout(b, 1, thickness, newColor));
+            newBranches.push(this.createSprout(b, this.angleMultiplier, thickness, newColor));
         }
         this.branches = this.branches.concat(branchesToProcess);
         branchesToProcess = newBranches;
@@ -206,13 +219,13 @@ Tree.prototype.repopulateBranches = function () {
     this.branches = this.branches.concat(branchesToProcess);
 }
 
-Tree.prototype.createSprout = function (branch, angleMultiplier, thickness) {
+Tree.prototype.createSprout = function (branch, angleMultiplier, thickness, color) {
     var v = createVector(branch.v.x, branch.v.y);
     var r = getRandomInt(-1 * this.angleVariation, this.angleVariation);
     var angle = (angleMultiplier * this.angle) + r;
     v.rotate(radians(angle));
     v.setMag(v.mag() * (this.multiplier + getRandomArbitrary(-1 * this.multiplierVariation, this.multiplierVariation)));
-    return new Branch(branch.x2, branch.y2, v, thickness);
+    return new Branch(branch.x2, branch.y2, v, thickness, color);
 }
 
 Tree.prototype.render = function () {
@@ -253,7 +266,10 @@ Tree.prototype.getState = function () {
         angleMultiplier: this.angleMultiplier,
         x: this.x,
         y: this.y,
-        trunkThickness: this.trunkThickness
+        trunkThickness: this.trunkThickness,
+        thicknessMultiplier: this.thicknessMultiplier,
+        trunkColor: this.trunkColor,
+        colorGradient: this.colorGradient
     }
 }
 
@@ -268,6 +284,9 @@ Tree.prototype.setState = function (state) {
     this.x = state.x;
     this.y = state.y;
     this.trunkThickness = state.trunkThickness;
+    this.trunkColor = state.trunkColor;
+    this.colorGradient = state.colorGradient;
+    this.thicknessMultiplier = state.thicknessMultiplier;
     this.repopulateBranches();
 }
 
