@@ -3,10 +3,14 @@ var allSliders;
 var grid;
 var colorGrid;
 var presetChoice;
+var presets;
 
 function setup() {
     frameRate(60);
     createCanvas(1000, 1000);
+
+    presets = new Slider(0, treeStates.length - 1, "Presets", () => presetChoice, v => setTheScene(v), 0, [5, 115, 110, 240]);
+    presets.setPosition(12, 12);
 
     setTheScene(0);
 }
@@ -21,6 +25,8 @@ function setTheScene(choice) {
 
 function draw() {
     background(tree.bgColor);
+
+    presets.render();
 
     grid.render();
     colorGrid.render();
@@ -56,6 +62,7 @@ function setupGridsAndSliders() {
     var mainSliders = main.concat(variation).concat(branchSliders);
 
     allSliders = mainSliders.concat(colorSliders);
+    allSliders.push(presets);
 
     grid = new Grid(mainSliders, 4, true);
     colorGrid = new Grid(colorSliders, 2);
@@ -666,7 +673,6 @@ var sliderFactory = (function () {
         new Slider(0, 255, "Trunk (Blue)", () => tree.trunkColor[2], v => tree.trunkColor[2] = v, 0, [0, 0, 255, 220]),
 
         new Slider(0, 245, "Background color", () => tree.bgColor, v => tree.bgColor = v, 0, [160, 160, 160, 200]),
-        new Slider(0, treeStates.length - 1, "Presets", () => presetChoice, v => setTheScene(v), 0, [160, 130, 220, 250]),
 
         new Slider(-30, 30, "Change (Red)", () => tree.colorChange[0], v => tree.colorChange[0] = v, 0, [255, 0, 0, 220]),
         new Slider(-30, 30, "Change (Green)", () => tree.colorChange[1], v => tree.colorChange[1] = v, 0, [0, 255, 0, 220]),
