@@ -10,16 +10,16 @@ function setup() {
         "trunkHeight": 245,
         "angleVariation": 0,
         "multiplierVariation": 0,
-        "iterations": 13,
+        "iterations": 12,
         "angle": 72,
         "multiplier": 0.68,
         "angleMultiplier": -0.35,
         "x": 429,
         "y": 699,
-        "trunkThickness": 20,
+        "trunkThickness": 15,
         "trunkColor": [50, 80, 90, 256],
         "colorGradient": [15, 6, 2, 0],
-        "thicknessMultiplier": 0.81
+        "thicknessMultiplier": 0.8
     };
 
     tree = new Tree(width / 2, height - 250);
@@ -27,7 +27,7 @@ function setup() {
     tree.setState(initialState);
 
     sliders = [
-        new Slider(0, 13, "Iterations", () => tree.iterations, v => tree.iterations = v),
+        new Slider(0, 12, "Iterations", () => tree.iterations, v => tree.iterations = v),
         new Slider(0.4, 0.8, "Length multiplier", () => tree.multiplier, v => tree.multiplier = v, 2),
         new Slider(0, 0.2, "Multiplier variation", () => tree.multiplierVariation, v => tree.multiplierVariation = v, 2),
         new Slider(0, 500, "Trunk height", () => tree.trunkHeight, v => tree.trunkHeight = v),
@@ -349,3 +349,20 @@ Grid.prototype.getHeight = function () {
     var numRows = (count + lastRowMissing) / this.cols;
     return this.margin + (this.margin + this.items[0].height) * numRows;
 }
+
+// 
+var tree = {
+    "trunkHeight": 108.92857142857143,
+    "angleVariation": 10.785714285714285,
+    "multiplierVariation": 0.019285714285714288,
+    "iterations": 11,
+    "angle": 25.071428571428573,
+    "multiplier": 0.8,
+    "angleMultiplier": -0.8857142857142857,
+    "x": 428,
+    "y": 664,
+    "trunkThickness": 15.589285714285715,
+    "thicknessMultiplier": 0.6,
+    "trunkColor": [50, 80, 90, 256],
+    "colorGradient": [15, 6, 2, 0]
+};
