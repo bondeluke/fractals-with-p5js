@@ -1,53 +1,52 @@
 var tree;
 var sliders;
-var sliderGrid;
+var grid;
+var colorGrid;
 
 function setup() {
     frameRate(60);
-    createCanvas(900, 900);
+    createCanvas(1000, 1000);
 
-    var initialState = {
-        "trunkHeight": 245,
-        "angleVariation": 0,
-        "multiplierVariation": 0,
-        "iterations": 12,
-        "angle": 72,
-        "multiplier": 0.68,
-        "angleMultiplier": -0.35,
-        "x": 429,
-        "y": 699,
-        "trunkThickness": 15,
-        "trunkColor": [50, 80, 90, 256],
-        "colorGradient": [15, 6, 2, 0],
-        "thicknessMultiplier": 0.8
-    };
-
-    tree = new Tree(width / 2, height - 250);
-
-    tree.setState(initialState);
+    tree = new Tree(treeStates[1]);
 
     sliders = [
         new Slider(0, 12, "Iterations", () => tree.iterations, v => tree.iterations = v),
-        new Slider(0.4, 0.8, "Length multiplier", () => tree.multiplier, v => tree.multiplier = v, 2),
-        new Slider(0, 0.2, "Multiplier variation", () => tree.multiplierVariation, v => tree.multiplierVariation = v, 2),
+        new Slider(1, 25, "Trunk thickness", () => tree.trunkThickness, v => tree.trunkThickness = v),
+        new Slider(0.5, .9, "Thickness multiplier", () => tree.thicknessMultiplier, v => tree.thicknessMultiplier = v, 2),
         new Slider(0, 500, "Trunk height", () => tree.trunkHeight, v => tree.trunkHeight = v),
-        new Slider(0, 180, "Angle", () => tree.angle, v => tree.angle = v),
-        new Slider(-4, 4, "Angle multiplier", () => tree.angleMultiplier, v => tree.angleMultiplier = v, 2),
-        new Slider(0, 20, "Angle variation", () => tree.angleVariation, v => tree.angleVariation = v),
-        new Slider(1, 20, "Trunk thickness", () => tree.trunkThickness, v => tree.trunkThickness = v)
+        new Slider(-180, 180, "Angle 1", () => tree.angle, v => tree.angle = v),
+        new Slider(-180, 180, "Angle 2", () => tree.angle2, v => tree.angle2 = v),
+        new Slider(0.4, 0.8, "Length multiplier", () => tree.multiplier, v => tree.multiplier = v, 2),
+        new Slider(0, 255, "Background color", () => tree.bgColor, v => tree.bgColor = v),
+        new Slider(0, 20, "Angle Variation", () => tree.angleVariation, v => tree.angleVariation = v, 0, [225, 200, 212, 220]),
+        new Slider(0, 0.2, "Length variation", () => tree.lengthVariation, v => tree.lengthVariation = v, 2, [225, 200, 212, 220])
     ];
 
-    sliderGrid = new Grid(sliders, 4);
+    grid = new Grid(sliders, 3);
 
-    var gridX = (width - sliderGrid.getWidth()) / 2;
-    sliderGrid.setPosition(gridX, height - sliderGrid.getHeight() - 20);
+    var colorSliders = [
+        new Slider(0, 255, "Trunk (Red)", () => tree.trunkColor[0], v => tree.trunkColor[0] = v, 0, [255, 0, 0, 220]),
+        new Slider(0, 255, "Trunk (Green)", () => tree.trunkColor[1], v => tree.trunkColor[1] = v, 0, [0, 255, 0, 220]),
+        new Slider(0, 255, "Trunk (Blue)", () => tree.trunkColor[2], v => tree.trunkColor[2] = v, 0, [0, 0, 255, 220]),
 
+        new Slider(0, 30, "Gradient (Red)", () => tree.colorGradient[0], v => tree.colorGradient[0] = v, 0, [255, 0, 0, 220]),
+        new Slider(0, 30, "Gradient (Green)", () => tree.colorGradient[1], v => tree.colorGradient[1] = v, 0, [0, 255, 0, 220]),
+        new Slider(0, 30, "Gradient (Blue)", () => tree.colorGradient[2], v => tree.colorGradient[2] = v, 0, [0, 0, 255, 220]),
+    ];
+
+    sliders = sliders.concat(colorSliders);
+
+    colorGrid = new Grid(colorSliders, 2);
+
+    grid.setPosition(25, height - grid.height - 20);
+    colorGrid.setPosition(width - colorGrid.width - 25, height - grid.height - 20);
 }
 
 function draw() {
-    background(230);
+    background(tree.bgColor);
 
-    sliderGrid.render();
+    grid.render();
+    colorGrid.render();
     tree.render();
 }
 
@@ -68,7 +67,7 @@ function mouseDragged() {
 }
 
 // Slider
-function Slider(minValue, maxValue, label, get, set, precision = 0) {
+function Slider(minValue, maxValue, label, get, set, precision = 0, color = [202, 200, 212, 220]) {
     // Computed constants
     this.radius = this.diameter / 2;
     this.sliderHeight = this.diameter + this.margin * 2;
@@ -81,7 +80,7 @@ function Slider(minValue, maxValue, label, get, set, precision = 0) {
     this.label = label;
     this.precision = precision;
     this.valueChangeListeners = [];
-    this.controlColor = [220, 180, 200, 220];
+    this.color = color;
 }
 
 Slider.prototype.setPosition = function (xPos, yPos) {
@@ -117,7 +116,7 @@ Slider.prototype.render = function () {
     fill(this.backgroundColor);
     rect(this.x, this.y, this.width, this.height);
     line(this.minSliderX, this.sliderY, this.maxSliderX, this.sliderY);
-    fill(this.controlColor);
+    fill(this.color);
     ellipse(this.getSliderX(), this.sliderY, this.diameter, this.diameter);
     fill(0);
     strokeWeight(0);
@@ -149,6 +148,9 @@ Slider.prototype.getSliderX = function () {
 }
 
 Slider.prototype.setValue = function (value) {
+    debugger;
+    // TODO: Make discrete using this.precision
+    value = localRound(value, this.precision);
 
     if (this.get() != value) {
         this.set(value);
@@ -176,20 +178,8 @@ Branch.prototype.render = function () {
 }
 
 // Tree
-function Tree(xPos, yPos) {
-    this.x = xPos;
-    this.y = yPos;
-    this.trunkHeight = 200;
-    this.angleVariation = 0;
-    this.multiplierVariation = 0;
-    this.iterations = 10;
-    this.angle = 45; // in degrees;
-    this.multiplier = 0.6;
-    this.angleMultiplier = -1;
-    this.trunkThickness = 5;
-    this.trunkColor = [0, 0, 0, 256];
-    this.colorGradient = [0, 0, 0, 0];
-    this.thicknessMultiplier = 0.65;
+function Tree(initialState) {
+    this.setState(initialState);
 }
 
 Tree.prototype.repopulateBranches = function () {
@@ -208,8 +198,8 @@ Tree.prototype.repopulateBranches = function () {
         var newColor = [c[0] + i * g[0], c[1] + i * g[1], c[2] + i * g[2], 256];
         for (var j = 0; j < branchesToProcess.length; j++) {
             var b = branchesToProcess[j];
-            newBranches.push(this.createSprout(b, 1, thickness, newColor));
-            newBranches.push(this.createSprout(b, this.angleMultiplier, thickness, newColor));
+            newBranches.push(this.createSprout(b, this.angle, thickness, newColor));
+            newBranches.push(this.createSprout(b, this.angle2, thickness, newColor));
         }
         this.branches = this.branches.concat(branchesToProcess);
         branchesToProcess = newBranches;
@@ -219,12 +209,11 @@ Tree.prototype.repopulateBranches = function () {
     this.branches = this.branches.concat(branchesToProcess);
 }
 
-Tree.prototype.createSprout = function (branch, angleMultiplier, thickness, color) {
+Tree.prototype.createSprout = function (branch, angle, thickness, color) {
     var v = createVector(branch.v.x, branch.v.y);
-    var r = getRandomInt(-1 * this.angleVariation, this.angleVariation);
-    var angle = (angleMultiplier * this.angle) + r;
-    v.rotate(radians(angle));
-    v.setMag(v.mag() * (this.multiplier + getRandomArbitrary(-1 * this.multiplierVariation, this.multiplierVariation)));
+    var r = getRandomArbitrary(-1 * this.angleVariation, this.angleVariation);
+    v.rotate(radians(angle + r));
+    v.setMag(v.mag() * (this.multiplier + getRandomArbitrary(-1 * this.lengthVariation, this.lengthVariation)));
     return new Branch(branch.x2, branch.y2, v, thickness, color);
 }
 
@@ -259,16 +248,17 @@ Tree.prototype.getState = function () {
     return {
         trunkHeight: this.trunkHeight,
         angleVariation: this.angleVariation,
-        multiplierVariation: this.multiplierVariation,
+        lengthVariation: this.lengthVariation,
         iterations: this.iterations,
         angle: this.angle,
         multiplier: this.multiplier,
-        angleMultiplier: this.angleMultiplier,
+        angle2: this.angle2,
         x: this.x,
         y: this.y,
         trunkThickness: this.trunkThickness,
         thicknessMultiplier: this.thicknessMultiplier,
         trunkColor: this.trunkColor,
+        bgColor: this.bgColor,
         colorGradient: this.colorGradient
     }
 }
@@ -276,47 +266,61 @@ Tree.prototype.getState = function () {
 Tree.prototype.setState = function (state) {
     this.trunkHeight = state.trunkHeight;
     this.angleVariation = state.angleVariation;
-    this.multiplierVariation = state.multiplierVariation;
+    this.lengthVariation = state.lengthVariation;
     this.iterations = state.iterations;
     this.angle = state.angle;
     this.multiplier = state.multiplier;
-    this.angleMultiplier = state.angleMultiplier;
+    this.angle2 = state.angle2;
     this.x = state.x;
     this.y = state.y;
     this.trunkThickness = state.trunkThickness;
     this.trunkColor = state.trunkColor;
     this.colorGradient = state.colorGradient;
     this.thicknessMultiplier = state.thicknessMultiplier;
+    this.bgColor = state.bgColor;
     this.repopulateBranches();
 }
 
-function getRandomInt(min, max) {
+// Helpers
+function getRandomInt(min, max) { // inclusive
     min = Math.ceil(min);
     max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min)) + min; //The maximum is exclusive and the minimum is inclusive
+    return Math.round(Math.random() * (max - min)) + min;
 }
 
 function getRandomArbitrary(min, max) {
     return Math.random() * (max - min) + min;
 }
 
-function round(x, base) {
-    var pow = Math.pow(base || 10, x);
-    return +(Math.round(this * pow) / pow);
+function localRound(num, precision) {
+    debugger;
+    if (precision === 0)
+        return parseInt(num);
+
+    var pow = Math.pow(10, precision);
+
+    return parseInt(num * pow) / pow;
 }
 
+function halfway(min, max) {
+    return (min + max) / 2;
+}
+
+// Grid
 function Grid(items, cols = 4) {
     this.cols = cols;
     this.margin = 5;
     this.items = items; // each item needs a setPosition(), width, and height properties
+    this.width = this.getWidth();
+    this.height = this.getHeight();
 }
 
 Grid.prototype.render = function () {
     var i = 0;
 
     var r, c;
-    for (r = 0; ; r++) {
-        for (c = 0; c < this.cols; c++) {
+    for (c = 0; c < this.cols; c++) {
+        for (r = 0; r < this.getNumRows(); r++) {
             if (i >= this.items.length) break;
 
             var item = this.items[i];
@@ -343,26 +347,66 @@ Grid.prototype.getWidth = function () {
     return this.margin + (this.margin + this.items[0].width) * (this.cols);
 }
 
-Grid.prototype.getHeight = function () {
+Grid.prototype.getNumRows = function() {
     var count = this.items.length;
     var lastRowMissing = count % this.cols === 0 ? 0 : this.cols - (count % this.cols);
-    var numRows = (count + lastRowMissing) / this.cols;
-    return this.margin + (this.margin + this.items[0].height) * numRows;
+    return (count + lastRowMissing) / this.cols;
 }
 
-// 
+Grid.prototype.getHeight = function () {
+    return this.margin + (this.margin + this.items[0].height) * this.getNumRows();
+}
+
+// Cool trees
 var tree = {
-    "trunkHeight": 108.92857142857143,
-    "angleVariation": 10.785714285714285,
-    "multiplierVariation": 0.019285714285714288,
+    "trunkHeight": 108,
+    "angleVariation": 10,
+    "lengthVariation": 0.01,
     "iterations": 11,
-    "angle": 25.071428571428573,
+    "angle": 25,
     "multiplier": 0.8,
-    "angleMultiplier": -0.8857142857142857,
-    "x": 428,
+    "angle2": -18,
+    "x": 478,
     "y": 664,
-    "trunkThickness": 15.589285714285715,
+    "trunkThickness": 15,
     "thicknessMultiplier": 0.6,
     "trunkColor": [50, 80, 90, 256],
+    "colorGradient": [15, 6, 2, 0],
+    "bgColor": 235
+};
+
+var myFav = {
+    "trunkHeight": 214,
+    "angleVariation": 1,
+    "lengthVariation": 0.04,
+    "iterations": 12,
+    "angle": 72,
+    "multiplier": 0.68,
+    "angle2": -23,
+    "x": 474,
+    "y": 654,
+    "trunkThickness": 18,
+    "thicknessMultiplier": 0.78,
+    "trunkColor": [50, 80, 90, 256],
+    "bgColor": 236,
     "colorGradient": [15, 6, 2, 0]
 };
+
+var bg = {
+    "trunkHeight": 117,
+    "angleVariation": 11,
+    "lengthVariation": 0.03,
+    "iterations": 11,
+    "angle": 25,
+    "multiplier": 0.8,
+    "angle2": -25,
+    "x": 478,
+    "y": 664,
+    "trunkThickness": 17,
+    "thicknessMultiplier": 0.61,
+    "trunkColor": [30, 69, 60, 256],
+    "bgColor": 35,
+    "colorGradient": [5, 21, 16, 0]
+};
+
+var treeStates = [tree, myFav, bg]
