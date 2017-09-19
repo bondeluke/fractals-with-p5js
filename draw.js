@@ -1,16 +1,64 @@
 var tree;
-var allSliders;
+var controlSliders;
 var grid;
 var colorGrid;
 var presetChoice;
-var presets;
+var presetSlider;
 
 function setup() {
     frameRate(60);
     createCanvas(1000, 1000);
 
-    presets = new Slider(0, treeStates.length - 1, "Presets", () => presetChoice, v => setTheScene(v), 0, [5, 115, 110, 240]);
-    presets.setPosition(12, 12);
+    presetSlider = new Slider(0, savedTrees.length - 1, "Presets", () => presetChoice, v => setTheScene(v), 0, [5, 115, 110, 240]);
+    presetSlider.setPosition(12, 12);
+
+    var saveButton = createButton('Save');
+    saveButton.position(width - 100, 12);
+    saveButton.mousePressed(function () {
+        savedTrees[presetChoice] = tree.getState();
+        alert('Saved preset ' + presetChoice);
+    });
+
+    var logStateButton = createButton('Log presets');
+    logStateButton.position(width - 100, 40);
+    logStateButton.mousePressed(function () {
+        console.log(JSON.stringify(savedTrees));
+    });
+
+    var saveAsButton = createButton('Save as New');
+    saveAsButton.position(width - 100, 68);
+    saveAsButton.mousePressed(function () {
+        savedTrees.push(tree.getState());
+        presetChoice = savedTrees.length - 1;
+        presetSlider.maxValue = presetChoice;
+        alert('Saved as preset ' + presetChoice);
+    });
+
+    var deleteButton = createButton('Delete');
+    deleteButton.position(width - 100, 96);
+    deleteButton.mousePressed(function () {
+        if (confirm('Are you sure you want to delete preset ' + presetChoice)) {
+            savedTrees.splice(presetChoice, 1);
+            presetChoice = confine(presetChoice, 0, savedTrees.length - 1);
+            presetSlider.maxValue = savedTrees.length - 1;
+            setTheScene(presetChoice);
+        }
+    });
+
+    var randomizeButton = createButton('Randomize');
+    randomizeButton.position(width - 100, 124);
+    randomizeButton.mousePressed(function () {
+        for (var i = 0; i < controlSliders.length; i++) {
+            var s = controlSliders[i];
+            s.setValue(getRandomArbitrary(s.minValue, s.maxValue));
+        }
+    });
+
+    var resetButton = createButton('Reset');
+    resetButton.position(width - 100, 152);
+    resetButton.mousePressed(function () {
+        setTheScene(presetChoice);
+    });
 
     setTheScene(0);
 }
@@ -18,7 +66,7 @@ function setup() {
 function setTheScene(choice) {
     presetChoice = choice;
 
-    tree = new Tree(treeStates[choice]);
+    tree = new Tree(savedTrees[choice]);
 
     setupGridsAndSliders();
 }
@@ -26,7 +74,7 @@ function setTheScene(choice) {
 function draw() {
     background(tree.bgColor);
 
-    presets.render();
+    presetSlider.render();
 
     grid.render();
     colorGrid.render();
@@ -34,18 +82,20 @@ function draw() {
 }
 
 function mousePressed() {
-    for (var i = 0; i < allSliders.length; i++) {
-        allSliders[i].onMousePressed();
+    for (var i = 0; i < controlSliders.length; i++) {
+        controlSliders[i].onMousePressed();
     }
 
+    presetSlider.onMousePressed();
     tree.onMousePressed();
 }
 
 function mouseDragged() {
-    for (var i = 0; i < allSliders.length; i++) {
-        allSliders[i].onMouseDragged();
+    for (var i = 0; i < controlSliders.length; i++) {
+        controlSliders[i].onMouseDragged();
     }
 
+    presetSlider.onMouseDragged();
     tree.onMouseDragged();
 }
 
@@ -61,8 +111,7 @@ function setupGridsAndSliders() {
 
     var mainSliders = main.concat(variation).concat(branchSliders);
 
-    allSliders = mainSliders.concat(colorSliders);
-    allSliders.push(presets);
+    controlSliders = mainSliders.concat(colorSliders);
 
     grid = new Grid(mainSliders, 4, true);
     colorGrid = new Grid(colorSliders, 2);
@@ -148,7 +197,7 @@ Slider.prototype.onMousePressed = function () {
 
 Slider.prototype.onMouseDragged = function () {
     if (this.mouseIsOver) {
-        var sliderX = max([min([mouseX, this.maxSliderX]), this.minSliderX]);
+        var sliderX = confine(mouseX, this.minSliderX, this.maxSliderX);
         this.setValue(this.getValueFromSlider(sliderX));
     }
 }
@@ -238,7 +287,7 @@ Tree.prototype.createSprout = function (p, bc, color) {
     var wr = getRandomArbitrary(-1 * this.weightVariation, this.weightVariation);
 
     // Position
-    pv.setMag(pv.mag() * min(bc.positionRatio + pr, 1));
+    pv.setMag(pv.mag() * confine(bc.positionRatio + pr, 0, 1));
     var x = p.x + pv.x;
     var y = p.y + pv.y;
 
@@ -247,7 +296,7 @@ Tree.prototype.createSprout = function (p, bc, color) {
     sv.setMag(sv.mag() * (bc.lengthRatio + lr));
 
     // Weight
-    var weight = p.weight * min(bc.weightRatio + wr, 1);
+    var weight = p.weight * confine(bc.weightRatio + wr, 0, 1);
 
     return new Branch(x, y, sv, weight, color);
 }
@@ -300,6 +349,7 @@ Tree.prototype.getState = function () {
 }
 
 Tree.prototype.setState = function (s) {
+    s = jsonClone(s);
     this.iterations = s.iterations;
     this.branchConfigs = s.branchConfigs;
     this.randomSelection = s.randomSelection ? s.randomSelection : false;
@@ -362,6 +412,10 @@ function shuffleLocal(array) {
     return array;
 }
 
+function confine(value, lowerLimit, upperLimit) {
+    return max([min([value, upperLimit]), lowerLimit]);
+}
+
 // Grid
 function Grid(items, cols = 4, leftToRight = false) {
     this.cols = cols;
@@ -415,12 +469,11 @@ Grid.prototype.getNumRows = function () {
     return (count + lastRowMissing) / this.cols;
 }
 
-Grid.prototype.getHeight = function() {
+Grid.prototype.getHeight = function () {
     return this.margin + (this.margin + this.items[0].height) * this.getNumRows();
 }
 
-// Cool trees
-var treeStates = [
+var savedTrees = [
     {
         "iterations": 3,
         "branchConfigs": [
@@ -436,7 +489,7 @@ var treeStates = [
         "lengthVariation": 0,
         "weightVariation": 0,
         "trunkColor": [0, 0, 0, 256],
-        "colorChange": [-30, -30, -30, 0],
+        "colorChange": [0, 0, 0, 0],
         "bgColor": 245,
         "x": 496,
         "y": 551
@@ -447,17 +500,19 @@ var treeStates = [
             { "angle": 60, "positionRatio": 1, "lengthRatio": 0.6, "weightRatio": 0.65 },
             { "angle": -60, "positionRatio": 1, "lengthRatio": 0.6, "weightRatio": 0.65 }
         ],
-        "trunkHeight": 278,
+        "randomSelection": false,
+        "trunkHeight": 240,
         "trunkWeight": 10,
-        "positionVariation": 0,
+        "trunkAngle": 0,
         "angleVariation": 0,
+        "positionVariation": 0,
         "lengthVariation": 0,
         "weightVariation": 0,
         "trunkColor": [103, 196, 191, 256],
         "colorChange": [14, -14, 12, 0],
         "bgColor": 236,
-        "x": 500,
-        "y": 654
+        "x": 491,
+        "y": 561
     },
     {
         "iterations": 7,
@@ -466,17 +521,19 @@ var treeStates = [
             { "angle": -25, "positionRatio": 1, "lengthRatio": 0.8, "weightRatio": 0.6 },
             { "angle": 2, "positionRatio": 1, "lengthRatio": 0.8, "weightRatio": 0.6 }
         ],
-        "trunkHeight": 139,
+        "randomSelection": false,
+        "trunkHeight": 129,
         "trunkWeight": 15,
-        "positionVariation": 0.05,
+        "trunkAngle": 0,
         "angleVariation": 20,
+        "positionVariation": 0.05,
         "lengthVariation": 0.03,
         "weightVariation": 0.16,
         "trunkColor": [52, 52, 94, 256],
         "colorChange": [28, 11, 5, 0],
         "bgColor": 235,
-        "x": 500,
-        "y": 654
+        "x": 484,
+        "y": 557
     },
     {
         "iterations": 12,
@@ -484,8 +541,10 @@ var treeStates = [
             { "angle": 72, "positionRatio": 1, "lengthRatio": 0.68, "weightRatio": 0.78 },
             { "angle": -23, "positionRatio": 1, "lengthRatio": 0.68, "weightRatio": 0.78 }
         ],
-        "trunkHeight": 197,
+        "randomSelection": false,
+        "trunkHeight": 184,
         "trunkWeight": 18,
+        "trunkAngle": 0,
         "angleVariation": 1,
         "positionVariation": 0,
         "lengthVariation": 0.04,
@@ -493,8 +552,8 @@ var treeStates = [
         "trunkColor": [50, 80, 90, 256],
         "colorChange": [15, 6, 2, 0],
         "bgColor": 236,
-        "x": 478,
-        "y": 598
+        "x": 490,
+        "y": 576
     },
     {
         "iterations": 11,
@@ -502,8 +561,10 @@ var treeStates = [
             { "angle": 25, "positionRatio": 1, "lengthRatio": 0.8, "weightRatio": 0.61 },
             { "angle": -25, "positionRatio": 1, "lengthRatio": 0.8, "weightRatio": 0.61 }
         ],
+        "randomSelection": false,
         "trunkHeight": 117,
         "trunkWeight": 17,
+        "trunkAngle": 0,
         "angleVariation": 11,
         "positionVariation": 0,
         "lengthVariation": 0.03,
@@ -511,8 +572,8 @@ var treeStates = [
         "trunkColor": [30, 69, 60, 256],
         "colorChange": [5, 21, 16, 0],
         "bgColor": 35,
-        "x": 489,
-        "y": 611
+        "x": 492,
+        "y": 567
     },
     {
         "iterations": 8,
@@ -521,8 +582,10 @@ var treeStates = [
             { "angle": -8, "positionRatio": 0.72, "lengthRatio": 0.68, "weightRatio": 0.75 },
             { "angle": -3, "positionRatio": 0.9, "lengthRatio": 0.68, "weightRatio": 0.75 }
         ],
-        "trunkHeight": 142,
+        "randomSelection": false,
+        "trunkHeight": 146,
         "trunkWeight": 4,
+        "trunkAngle": 0,
         "angleVariation": 14,
         "positionVariation": 0.03,
         "lengthVariation": 0.17,
@@ -530,8 +593,8 @@ var treeStates = [
         "trunkColor": [25, 63, 69, 256],
         "colorChange": [19, 15, 9, 0],
         "bgColor": 220,
-        "x": 485,
-        "y": 600
+        "x": 491,
+        "y": 575
     },
     {
         "iterations": 11,
@@ -539,8 +602,10 @@ var treeStates = [
             { "angle": 71, "positionRatio": 1, "lengthRatio": 0.68, "weightRatio": 0.9 },
             { "angle": -12, "positionRatio": 1, "lengthRatio": 0.68, "weightRatio": 0.9 }
         ],
+        "randomSelection": false,
         "trunkHeight": 169,
         "trunkWeight": 25,
+        "trunkAngle": 0,
         "angleVariation": 1,
         "positionVariation": 0,
         "lengthVariation": 0.08,
@@ -557,8 +622,10 @@ var treeStates = [
             { "angle": 30, "positionRatio": 1, "lengthRatio": 0.8, "weightRatio": 0.9 },
             { "angle": -30, "positionRatio": 1, "lengthRatio": 0.8, "weightRatio": 0.9 }
         ],
+        "randomSelection": false,
         "trunkHeight": 120,
         "trunkWeight": 25,
+        "trunkAngle": 0,
         "angleVariation": 15,
         "positionVariation": 0,
         "lengthVariation": 0.01,
@@ -566,8 +633,8 @@ var treeStates = [
         "trunkColor": [52, 52, 94, 256],
         "colorChange": [20, 11, 5, 0],
         "bgColor": 196,
-        "x": 481,
-        "y": 613
+        "x": 498,
+        "y": 571
     },
     {
         "iterations": 10,
@@ -575,8 +642,10 @@ var treeStates = [
             { "angle": 54, "positionRatio": 1, "lengthRatio": 0.76, "weightRatio": 0.75 },
             { "angle": -34, "positionRatio": 1, "lengthRatio": 0.76, "weightRatio": 0.75 }
         ],
+        "randomSelection": false,
         "trunkHeight": 153,
         "trunkWeight": 17,
+        "trunkAngle": 0,
         "angleVariation": 10,
         "positionVariation": 0,
         "lengthVariation": 0.04,
@@ -584,8 +653,8 @@ var treeStates = [
         "trunkColor": [187, 207, 185, 256],
         "colorChange": [-17, -22, -11, 0],
         "bgColor": 0,
-        "x": 466,
-        "y": 598
+        "x": 488,
+        "y": 557
     },
     {
         "iterations": 6,
@@ -595,8 +664,10 @@ var treeStates = [
             { "angle": -38, "positionRatio": 0.7, "lengthRatio": 0.65, "weightRatio": 0.74 },
             { "angle": 41, "positionRatio": 0.54, "lengthRatio": 0.61, "weightRatio": 0.74 }
         ],
+        "randomSelection": false,
         "trunkHeight": 237,
         "trunkWeight": 12,
+        "trunkAngle": 0,
         "angleVariation": 3,
         "positionVariation": 0.06,
         "lengthVariation": 0.02,
@@ -604,9 +675,10 @@ var treeStates = [
         "trunkColor": [108, 85, 68, 256],
         "colorChange": [-12, 8, -3, 0],
         "bgColor": 245,
-        "x": 484,
-        "y": 600
-    }, {
+        "x": 487,
+        "y": 573
+    },
+    {
         "iterations": 6,
         "branchConfigs": [
             { "angle": 34, "positionRatio": 0.98, "lengthRatio": 0.59, "weightRatio": 0.66 },
@@ -626,9 +698,10 @@ var treeStates = [
         "trunkColor": [108, 85, 68, 256],
         "colorChange": [-12, 8, -3, 0],
         "bgColor": 245,
-        "x": 489,
-        "y": 555
-    }, {
+        "x": 471,
+        "y": 540
+    },
+    {
         "iterations": 5,
         "branchConfigs": [
             { "angle": 81, "positionRatio": 1, "lengthRatio": 0.6, "weightRatio": 0.53 },
@@ -648,9 +721,97 @@ var treeStates = [
         "trunkColor": [30, 59, 50, 256],
         "colorChange": [-4, 11, 17, 0],
         "bgColor": 245,
-        "x": 489,
-        "y": 569
-    }];
+        "x": 500,
+        "y": 566
+    },
+    {
+        "iterations": 5,
+        "branchConfigs": [
+            { "angle": 9, "positionRatio": 0, "lengthRatio": 0.77, "weightRatio": 0.65 },
+            { "angle": -9, "positionRatio": 0.5, "lengthRatio": 0.7, "weightRatio": 0.72 },
+            { "angle": -6, "positionRatio": 0.78, "lengthRatio": 0.55, "weightRatio": 0.81 },
+            { "angle": -13, "positionRatio": 0.28, "lengthRatio": 0.55, "weightRatio": 0.65 },
+            { "angle": 0, "positionRatio": 0.08, "lengthRatio": 0.57, "weightRatio": 0.75 }
+        ],
+        "randomSelection": false,
+        "trunkHeight": 300,
+        "trunkWeight": 1,
+        "trunkAngle": 3,
+        "angleVariation": 0,
+        "positionVariation": 0,
+        "lengthVariation": 0,
+        "weightVariation": 0,
+        "trunkColor": [132, 130, 134, 256],
+        "colorChange": [-9, -5, -2, 0],
+        "bgColor": 245,
+        "x": 510,
+        "y": 573
+    },
+    {
+        "iterations": 7,
+        "branchConfigs": [
+            { "angle": 60, "positionRatio": 1, "lengthRatio": 0.78, "weightRatio": 0.9 },
+            { "angle": 180, "positionRatio": 0, "lengthRatio": 0.65, "weightRatio": 0.9 },
+            { "angle": -60, "positionRatio": 0, "lengthRatio": 0.55, "weightRatio": 0.9 }
+        ],
+        "randomSelection": false,
+        "trunkHeight": 136,
+        "trunkWeight": 1,
+        "trunkAngle": -60,
+        "angleVariation": 0,
+        "positionVariation": 0,
+        "lengthVariation": 0,
+        "weightVariation": 0,
+        "trunkColor": [0, 0, 0, 256],
+        "colorChange": [0, 0, 0, 0],
+        "bgColor": 245,
+        "x": 538,
+        "y": 341
+    },
+    {
+        "iterations": 7,
+        "branchConfigs": [
+            { "angle": 60, "positionRatio": 1, "lengthRatio": 0.74, "weightRatio": 0.9 },
+            { "angle": 180, "positionRatio": 0, "lengthRatio": 0.4, "weightRatio": 0.9 },
+            { "angle": -180, "positionRatio": 0, "lengthRatio": 0.71, "weightRatio": 0.9 }
+        ],
+        "randomSelection": false,
+        "trunkHeight": 136,
+        "trunkWeight": 1,
+        "trunkAngle": 0,
+        "angleVariation": 0,
+        "positionVariation": 0,
+        "lengthVariation": 0,
+        "weightVariation": 0,
+        "trunkColor": [0, 0, 0, 256],
+        "colorChange": [0, 0, 0, 0],
+        "bgColor": 245,
+        "x": 461,
+        "y": 347
+    },
+    {
+        "iterations": 5,
+        "branchConfigs": [
+            { "angle": 45, "positionRatio": 1, "lengthRatio": 0.4, "weightRatio": 0.75 },
+            { "angle": 45, "positionRatio": 0.56, "lengthRatio": 0.53, "weightRatio": 0.73 },
+            { "angle": -45, "positionRatio": 0.42, "lengthRatio": 0.54, "weightRatio": 0.7 },
+            { "angle": -40, "positionRatio": 1, "lengthRatio": 0.45, "weightRatio": 0.5 }
+        ],
+        "randomSelection": false,
+        "trunkHeight": 283,
+        "trunkWeight": 3,
+        "trunkAngle": 0,
+        "angleVariation": 0,
+        "positionVariation": 0,
+        "lengthVariation": 0,
+        "weightVariation": 0,
+        "trunkColor": [207, 114, 0, 256],
+        "colorChange": [-30, -22, 21, 0],
+        "bgColor": 245,
+        "x": 476,
+        "y": 557
+    }
+];
 
 var sliderFactory = (function () {
     var main = [
@@ -701,9 +862,9 @@ var sliderFactory = (function () {
 
                     return [
                         new Slider(-180, 180, branchId + " Angle", () => tree.branchConfigs[i].angle, v => tree.branchConfigs[i].angle = v, 0, [180, 205, 228, 220]),
-                        new Slider(0.0, 1.0, branchId + " Position Ratio", () => tree.branchConfigs[i].positionRatio, v => tree.branchConfigs[i].positionRatio = v, 2, [180, 205, 218, 220]),
-                        new Slider(0.4, .9, branchId + " Length Ratio", () => tree.branchConfigs[i].lengthRatio, v => tree.branchConfigs[i].lengthRatio = v, 2, [180, 205, 218, 220]),
-                        new Slider(0.5, .9, branchId + " Weight Ratio", () => tree.branchConfigs[i].weightRatio, v => tree.branchConfigs[i].weightRatio = v, 2, [180, 205, 218, 220])
+                        new Slider(0.0, 1.0, branchId + " Position ratio", () => tree.branchConfigs[i].positionRatio, v => tree.branchConfigs[i].positionRatio = v, 2, [180, 205, 218, 220]),
+                        new Slider(0.4, .9, branchId + " Length ratio", () => tree.branchConfigs[i].lengthRatio, v => tree.branchConfigs[i].lengthRatio = v, 2, [180, 205, 218, 220]),
+                        new Slider(0.5, .9, branchId + " Weight ratio", () => tree.branchConfigs[i].weightRatio, v => tree.branchConfigs[i].weightRatio = v, 2, [180, 205, 218, 220])
                     ];
                 })(i);
 
