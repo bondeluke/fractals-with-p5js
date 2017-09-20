@@ -80,9 +80,6 @@ function draw() {
     grid.render();
     colorGrid.render();
     tree.render();
-
-    if (anyKeyIsHeldDown)
-        keyHeldDown();
 }
 
 function mousePressed() {
@@ -103,20 +100,12 @@ function mouseDragged() {
     tree.onMouseDragged();
 }
 
-var anyKeyIsHeldDown;
-
-function keyHeldDown() {
-    for (var i = 0; i < controlSliders.length; i++) {
-        controlSliders[i].onKeyPressed(keyCode);
-    }
-}
-
 function keyPressed() {
-    anyKeyIsHeldDown = true;
-}
+    for (var i = 0; i < controlSliders.length; i++) {
+        controlSliders[i].onKeyPressed();
+    }
 
-function keyReleased() {
-    anyKeyIsHeldDown = false;
+    presetSlider.onKeyPressed();
 }
 
 function setupGridsAndSliders() {
@@ -146,7 +135,12 @@ var memory = [];
 function updateBranchConfigsAndSliders(newCount) {
     var bc = tree.branchConfigs;
     while (bc.length < newCount) {
-        var config = memory.length > 0 ? memory.pop() : jsonClone(bc[bc.length - 1]);
+        var config = memory.length > 0 ? memory.pop() : {
+            angle: getRandomInt(-90, 90),
+            positionRatio: 1.0,
+            lengthRatio: 0.65,
+            weightRatio: 0.7
+        };
         bc.push(config);
     }
     while (bc.length > newCount) {
@@ -170,6 +164,7 @@ function Slider(minValue, maxValue, label, get, set, precision = 0, color = [202
     this.precision = precision;
     this.color = color;
     this.active = false;
+    this.disabled = false;
 }
 
 Slider.prototype.setPosition = function (xPos, yPos) {
@@ -200,22 +195,35 @@ Slider.prototype.getDisplayValue = function () {
 
 Slider.prototype.render = function () {
     push();
-    strokeWeight(this.active ? 1.1 : 1);
-    fill(this.backgroundColor + (this.active ? -10 : 0));
+
+    var d = this.disabled;
+    var a = this.active;
+    var alpha = d ? 60 : 255;
+
+    var bgValue = d ? 175 : this.backgroundColor + (a ? -15 : 0);
+    fill(d ? 185 : bgValue, bgValue + (a ? 5 : 0), bgValue, alpha);
     rect(this.x, this.y, this.width, this.height);
+
+    stroke(0, alpha);
     line(this.minSliderX, this.sliderY, this.maxSliderX, this.sliderY);
-    strokeWeight(1);
-    fill(this.color);
+
+    var c = jsonClone(this.color); c[3] = d ? alpha/3 : c[3];
+    fill(c);
     ellipse(this.getSliderX(), this.sliderY, this.diameter, this.diameter);
-    fill(0);
+
+    fill(0, alpha);
     strokeWeight(0);
     text(this.getDisplayValue(), this.minSliderX, this.y + this.height - this.sliderHeight - 1);
+
     pop();
 }
 
 Slider.prototype.onMousePressed = function () {
+    if (this.disabled) return;
+
     this.mouseIsOver = dist(mouseX, mouseY, this.getSliderX(), this.sliderY) < this.radius;
-    this.active = this.mouseIsOver;
+    var within = function (val, min, max) { return min < val && val < max }
+    this.active = within(mouseX, this.x, this.x + this.width) && within(mouseY, this.y, this.y + this.height);
 }
 
 Slider.prototype.onMouseDragged = function () {
@@ -231,7 +239,7 @@ Slider.prototype.onKeyPressed = function () {
     var value = this.sourceGet();
     var step = 1 / Math.pow(10, this.precision);
 
-    if (keyCode === 37 || keyCode === 40) { // decrement
+    if (keyCode === 37 || keyCode === 40) { // left or down
         this.setValue(value - step);
     } else if (keyCode === 38 || keyCode === 39) {
         this.setValue(value + step);
@@ -930,6 +938,23 @@ var sliderFactory = (function () {
                 branchSliders = branchSliders.concat(group);
             }
 
+            for (var i = tree.branchConfigs.length; i < 5; i++) {
+                var branchId = "B" + (i + 1);
+
+                var dummyGroup = [
+                    new Slider(-180, 180, branchId + " Angle", () => 12, v => { }, 0, [180, 205, 228, 220]),
+                    new Slider(0.0, 1.0, branchId + " Position ratio", () => 1, v => { }, 2, [180, 205, 218, 220]),
+                    new Slider(0.4, .9, branchId + " Length ratio", () => 0.65, v => { }, 2, [180, 205, 218, 220]),
+                    new Slider(0.5, .9, branchId + " Weight ratio", () => .7, v => { }, 2, [180, 205, 218, 220])
+                ];
+
+                for (var j = 0; j < dummyGroup.length; j++) {
+                    dummyGroup[j].disabled = true;
+                }
+
+                branchSliders = branchSliders.concat(dummyGroup);
+            }
+            debugger;
             return branchSliders;
         }
     }
