@@ -424,7 +424,7 @@ function localRound(num, precision) {
 
     var pow = Math.pow(10, precision);
 
-    return parseInt(num * pow) / pow;
+    return parseInt(Math.round(num * pow)) / pow;
 }
 
 function jsonClone(obj) {
@@ -930,7 +930,7 @@ var sliderFactory = (function () {
                     return [
                         new Slider(-180, 180, branchId + " Angle", () => tree.branchConfigs[i].angle, v => tree.branchConfigs[i].angle = v, 0, [180, 205, 228, 220]),
                         new Slider(0.0, 1.0, branchId + " Position ratio", () => tree.branchConfigs[i].positionRatio, v => tree.branchConfigs[i].positionRatio = v, 2, [180, 205, 218, 220]),
-                        new Slider(0.4, .9, branchId + " Length ratio", () => tree.branchConfigs[i].lengthRatio, v => tree.branchConfigs[i].lengthRatio = v, 2, [180, 205, 218, 220]),
+                        new Slider(0.1, .9, branchId + " Length ratio", () => tree.branchConfigs[i].lengthRatio, v => tree.branchConfigs[i].lengthRatio = v, 2, [180, 205, 218, 220]),
                         new Slider(0.5, .9, branchId + " Weight ratio", () => tree.branchConfigs[i].weightRatio, v => tree.branchConfigs[i].weightRatio = v, 2, [180, 205, 218, 220])
                     ];
                 })(i);
@@ -954,7 +954,6 @@ var sliderFactory = (function () {
 
                 branchSliders = branchSliders.concat(dummyGroup);
             }
-            debugger;
             return branchSliders;
         }
     }
