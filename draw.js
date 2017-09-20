@@ -4,9 +4,10 @@ var grid;
 var colorGrid;
 var presetChoice;
 var presetSlider;
+var activeSlider;
 
 function setup() {
-    frameRate(60);
+    frameRate(15);
     createCanvas(1000, 1000);
 
     presetSlider = new Slider(0, savedTrees.length - 1, "Presets", () => presetChoice, v => setTheScene(v), 0, [5, 115, 110, 240]);
@@ -79,6 +80,9 @@ function draw() {
     grid.render();
     colorGrid.render();
     tree.render();
+
+    if (anyKeyIsHeldDown)
+        keyHeldDown();
 }
 
 function mousePressed() {
@@ -97,6 +101,22 @@ function mouseDragged() {
 
     presetSlider.onMouseDragged();
     tree.onMouseDragged();
+}
+
+var anyKeyIsHeldDown;
+
+function keyHeldDown() {
+    for (var i = 0; i < controlSliders.length; i++) {
+        controlSliders[i].onKeyPressed(keyCode);
+    }
+}
+
+function keyPressed() {
+    anyKeyIsHeldDown = true;
+}
+
+function keyReleased() {
+    anyKeyIsHeldDown = false;
 }
 
 function setupGridsAndSliders() {
@@ -149,6 +169,7 @@ function Slider(minValue, maxValue, label, get, set, precision = 0, color = [202
     this.label = label;
     this.precision = precision;
     this.color = color;
+    this.active = false;
 }
 
 Slider.prototype.setPosition = function (xPos, yPos) {
@@ -179,10 +200,11 @@ Slider.prototype.getDisplayValue = function () {
 
 Slider.prototype.render = function () {
     push();
-    strokeWeight(1);
-    fill(this.backgroundColor);
+    strokeWeight(this.active ? 1.1 : 1);
+    fill(this.backgroundColor + (this.active ? -10 : 0));
     rect(this.x, this.y, this.width, this.height);
     line(this.minSliderX, this.sliderY, this.maxSliderX, this.sliderY);
+    strokeWeight(1);
     fill(this.color);
     ellipse(this.getSliderX(), this.sliderY, this.diameter, this.diameter);
     fill(0);
@@ -193,12 +215,26 @@ Slider.prototype.render = function () {
 
 Slider.prototype.onMousePressed = function () {
     this.mouseIsOver = dist(mouseX, mouseY, this.getSliderX(), this.sliderY) < this.radius;
+    this.active = this.mouseIsOver;
 }
 
 Slider.prototype.onMouseDragged = function () {
     if (this.mouseIsOver) {
         var sliderX = confine(mouseX, this.minSliderX, this.maxSliderX);
         this.setValue(this.getValueFromSlider(sliderX));
+    }
+}
+
+Slider.prototype.onKeyPressed = function () {
+    if (!this.active) return;
+
+    var value = this.sourceGet();
+    var step = 1 / Math.pow(10, this.precision);
+
+    if (keyCode === 37 || keyCode === 40) { // decrement
+        this.setValue(value - step);
+    } else if (keyCode === 38 || keyCode === 39) {
+        this.setValue(value + step);
     }
 }
 
@@ -209,7 +245,7 @@ Slider.prototype.getSliderX = function () {
 }
 
 Slider.prototype.setValue = function (value) {
-    value = localRound(value, this.precision);
+    value = confine(localRound(value, this.precision), this.minValue, this.maxValue);
 
     if (this.sourceGet() != value) {
         this.sourceSet(value);
@@ -302,11 +338,6 @@ Tree.prototype.createSprout = function (p, bc, color) {
 }
 
 Tree.prototype.render = function () {
-    //push();
-    //fill(150, 220, 150);
-    //ellipse(this.x, this.y, 52, 24);
-    //pop();
-
     for (var i = 0; i < this.branches.length; i++) {
         this.branches[i].render();
     }
@@ -476,7 +507,8 @@ Grid.prototype.getHeight = function () {
 var savedTrees = [
     {
         "iterations": 3,
-        "branchConfigs": [
+        "branchConfigs":
+        [
             { "angle": 60, "positionRatio": 1, "lengthRatio": 0.6, "weightRatio": 0.9 },
             { "angle": -60, "positionRatio": 1, "lengthRatio": 0.6, "weightRatio": 0.9 }
         ],
@@ -496,7 +528,8 @@ var savedTrees = [
     },
     {
         "iterations": 8,
-        "branchConfigs": [
+        "branchConfigs":
+        [
             { "angle": 60, "positionRatio": 1, "lengthRatio": 0.6, "weightRatio": 0.65 },
             { "angle": -60, "positionRatio": 1, "lengthRatio": 0.6, "weightRatio": 0.65 }
         ],
@@ -537,7 +570,8 @@ var savedTrees = [
     },
     {
         "iterations": 12,
-        "branchConfigs": [
+        "branchConfigs":
+        [
             { "angle": 72, "positionRatio": 1, "lengthRatio": 0.68, "weightRatio": 0.78 },
             { "angle": -23, "positionRatio": 1, "lengthRatio": 0.68, "weightRatio": 0.78 }
         ],
@@ -557,7 +591,8 @@ var savedTrees = [
     },
     {
         "iterations": 11,
-        "branchConfigs": [
+        "branchConfigs":
+        [
             { "angle": 25, "positionRatio": 1, "lengthRatio": 0.8, "weightRatio": 0.61 },
             { "angle": -25, "positionRatio": 1, "lengthRatio": 0.8, "weightRatio": 0.61 }
         ],
@@ -598,7 +633,8 @@ var savedTrees = [
     },
     {
         "iterations": 11,
-        "branchConfigs": [
+        "branchConfigs":
+        [
             { "angle": 71, "positionRatio": 1, "lengthRatio": 0.68, "weightRatio": 0.9 },
             { "angle": -12, "positionRatio": 1, "lengthRatio": 0.68, "weightRatio": 0.9 }
         ],
@@ -618,7 +654,8 @@ var savedTrees = [
     },
     {
         "iterations": 12,
-        "branchConfigs": [
+        "branchConfigs":
+        [
             { "angle": 30, "positionRatio": 1, "lengthRatio": 0.8, "weightRatio": 0.9 },
             { "angle": -30, "positionRatio": 1, "lengthRatio": 0.8, "weightRatio": 0.9 }
         ],
@@ -638,7 +675,8 @@ var savedTrees = [
     },
     {
         "iterations": 10,
-        "branchConfigs": [
+        "branchConfigs":
+        [
             { "angle": 54, "positionRatio": 1, "lengthRatio": 0.76, "weightRatio": 0.75 },
             { "angle": -34, "positionRatio": 1, "lengthRatio": 0.76, "weightRatio": 0.75 }
         ],
@@ -810,6 +848,27 @@ var savedTrees = [
         "bgColor": 245,
         "x": 476,
         "y": 557
+    },
+    {
+        "iterations": 6,
+        "branchConfigs": [
+            { "angle": -9, "positionRatio": 1, "lengthRatio": 0.56, "weightRatio": 0.62 },
+            { "angle": 16, "positionRatio": 0.38, "lengthRatio": 0.6, "weightRatio": 0.65 },
+            { "angle": 9, "positionRatio": 0.17, "lengthRatio": 0.6, "weightRatio": 0.65 }
+        ],
+        "randomSelection": false,
+        "trunkHeight": 100,
+        "trunkWeight": 4,
+        "trunkAngle": 0,
+        "angleVariation": 0,
+        "positionVariation": 0,
+        "lengthVariation": 0,
+        "weightVariation": 0,
+        "trunkColor": [255, 205, 252, 256],
+        "colorChange": [-30, 0, 0, 0],
+        "bgColor": 244,
+        "x": 491,
+        "y": 561
     }
 ];
 
