@@ -5,13 +5,14 @@ var colorGrid;
 var presetChoice;
 var presetSlider;
 var activeSlider;
+var hideControls;
 
 function setup() {
     frameRate(15);
-    createCanvas(1000, 1000);
+    createCanvas(1344, 756);
 
     presetSlider = new Slider(0, savedTrees.length - 1, "Presets", () => presetChoice, v => setTheScene(v), 0, [5, 115, 110, 240]);
-    presetSlider.setPosition(12, 12);
+    presetSlider.setPosition(15, 15);
 
     var saveButton = createButton('Save');
     saveButton.position(width - 100, 12);
@@ -61,7 +62,27 @@ function setup() {
         setTheScene(presetChoice);
     });
 
-    setTheScene(0);
+    var downloadButton = createButton('Download');
+    downloadButton.position(width - 100, 176);
+    downloadButton.mousePressed(function () {
+        if (hideControls || confirm('Are you sure you want to download an image without the hiding controls first?')) {
+            save('FractalTree.png');
+        }
+    });
+
+    var shownOnce = false;
+    var hideButton = createButton('Hide controls');
+    hideButton.position(width - 100, 204);
+    hideButton.mousePressed(function () {
+        if (!hideControls && !shownOnce) {
+            alert('Hiding controls makes for a better image when downloading. Note that you can drag the tree by its base');
+            shownOnce = true;
+        }
+        hideControls = !hideControls;
+        hideButton.elt.innerText = hideControls ? 'Unhide' : 'Hide controls';
+    });
+
+    setTheScene(getRandomInt(0, savedTrees.length - 1));
 }
 
 function setTheScene(choice) {
@@ -75,10 +96,12 @@ function setTheScene(choice) {
 function draw() {
     background(tree.bgColor);
 
-    presetSlider.render();
+    if (!hideControls) {
+        presetSlider.render();
+        grid.render();
+        colorGrid.render();
+    }
 
-    grid.render();
-    colorGrid.render();
     tree.render();
 }
 
@@ -109,6 +132,7 @@ function keyPressed() {
 }
 
 function setupGridsAndSliders() {
+    var windowMargin = 10;
     var c = tree.branchConfigs.length;
     var iterationLimit = c === 2 ? 12 : (c === 3 ? 8 : 6);
     tree.iterations = min(tree.iterations, iterationLimit);
@@ -126,8 +150,8 @@ function setupGridsAndSliders() {
     colorGrid = new Grid(colorSliders, 2);
 
     var h = 370;
-    grid.setPosition(25, height - h - 20);
-    colorGrid.setPosition(width - colorGrid.width - 25, height - h - 20);
+    grid.setPosition(windowMargin, 310);
+    colorGrid.setPosition(windowMargin, 80);
 }
 
 var memory = [];
@@ -178,7 +202,7 @@ Slider.prototype.setPosition = function (xPos, yPos) {
 }
 
 Slider.prototype.height = 50;
-Slider.prototype.width = 150;
+Slider.prototype.width = 140;
 Slider.prototype.margin = 5;
 Slider.prototype.diameter = 25;
 Slider.prototype.backgroundColor = 240;
@@ -207,7 +231,7 @@ Slider.prototype.render = function () {
     stroke(0, alpha);
     line(this.minSliderX, this.sliderY, this.maxSliderX, this.sliderY);
 
-    var c = jsonClone(this.color); c[3] = d ? alpha/3 : c[3];
+    var c = jsonClone(this.color); c[3] = d ? alpha / 3 : c[3];
     fill(c);
     ellipse(this.getSliderX(), this.sliderY, this.diameter, this.diameter);
 
@@ -352,7 +376,7 @@ Tree.prototype.render = function () {
 }
 
 Tree.prototype.onMousePressed = function () {
-    this.mouseIsOver = dist(mouseX, mouseY, this.x, this.y) < 40;
+    this.mouseIsOver = dist(mouseX, mouseY, this.x, this.y) < 80;
 }
 
 Tree.prototype.onMouseDragged = function () {
@@ -531,8 +555,8 @@ var savedTrees = [
         "trunkColor": [0, 0, 0, 256],
         "colorChange": [0, 0, 0, 0],
         "bgColor": 245,
-        "x": 496,
-        "y": 551
+        "x": 943,
+        "y": 618
     },
     {
         "iterations": 8,
@@ -552,8 +576,8 @@ var savedTrees = [
         "trunkColor": [103, 196, 191, 256],
         "colorChange": [14, -14, 12, 0],
         "bgColor": 236,
-        "x": 491,
-        "y": 561
+        "x": 951,
+        "y": 636
     },
     {
         "iterations": 7,
@@ -573,8 +597,8 @@ var savedTrees = [
         "trunkColor": [52, 52, 94, 256],
         "colorChange": [28, 11, 5, 0],
         "bgColor": 235,
-        "x": 484,
-        "y": 557
+        "x": 956,
+        "y": 641
     },
     {
         "iterations": 12,
@@ -594,8 +618,8 @@ var savedTrees = [
         "trunkColor": [50, 80, 90, 256],
         "colorChange": [15, 6, 2, 0],
         "bgColor": 236,
-        "x": 490,
-        "y": 576
+        "x": 908,
+        "y": 635
     },
     {
         "iterations": 11,
@@ -615,8 +639,8 @@ var savedTrees = [
         "trunkColor": [30, 69, 60, 256],
         "colorChange": [5, 21, 16, 0],
         "bgColor": 35,
-        "x": 492,
-        "y": 567
+        "x": 957,
+        "y": 663
     },
     {
         "iterations": 8,
@@ -626,7 +650,7 @@ var savedTrees = [
             { "angle": -3, "positionRatio": 0.9, "lengthRatio": 0.68, "weightRatio": 0.75 }
         ],
         "randomSelection": false,
-        "trunkHeight": 146,
+        "trunkHeight": 174,
         "trunkWeight": 4,
         "trunkAngle": 0,
         "angleVariation": 14,
@@ -636,8 +660,8 @@ var savedTrees = [
         "trunkColor": [25, 63, 69, 256],
         "colorChange": [19, 15, 9, 0],
         "bgColor": 220,
-        "x": 491,
-        "y": 575
+        "x": 914,
+        "y": 701
     },
     {
         "iterations": 11,
@@ -657,8 +681,8 @@ var savedTrees = [
         "trunkColor": [36, 74, 50, 256],
         "colorChange": [0, 4, 0, 0],
         "bgColor": 245,
-        "x": 484,
-        "y": 588
+        "x": 909,
+        "y": 600
     },
     {
         "iterations": 12,
@@ -668,7 +692,7 @@ var savedTrees = [
             { "angle": -30, "positionRatio": 1, "lengthRatio": 0.8, "weightRatio": 0.9 }
         ],
         "randomSelection": false,
-        "trunkHeight": 120,
+        "trunkHeight": 100,
         "trunkWeight": 25,
         "trunkAngle": 0,
         "angleVariation": 15,
@@ -678,8 +702,8 @@ var savedTrees = [
         "trunkColor": [52, 52, 94, 256],
         "colorChange": [20, 11, 5, 0],
         "bgColor": 196,
-        "x": 498,
-        "y": 571
+        "x": 949,
+        "y": 634
     },
     {
         "iterations": 10,
@@ -689,7 +713,7 @@ var savedTrees = [
             { "angle": -34, "positionRatio": 1, "lengthRatio": 0.76, "weightRatio": 0.75 }
         ],
         "randomSelection": false,
-        "trunkHeight": 153,
+        "trunkHeight": 131,
         "trunkWeight": 17,
         "trunkAngle": 0,
         "angleVariation": 10,
@@ -699,30 +723,8 @@ var savedTrees = [
         "trunkColor": [187, 207, 185, 256],
         "colorChange": [-17, -22, -11, 0],
         "bgColor": 0,
-        "x": 488,
-        "y": 557
-    },
-    {
-        "iterations": 6,
-        "branchConfigs": [
-            { "angle": 34, "positionRatio": 1, "lengthRatio": 0.59, "weightRatio": 0.72 },
-            { "angle": -13, "positionRatio": 0.83, "lengthRatio": 0.6, "weightRatio": 0.68 },
-            { "angle": -38, "positionRatio": 0.7, "lengthRatio": 0.65, "weightRatio": 0.74 },
-            { "angle": 41, "positionRatio": 0.54, "lengthRatio": 0.61, "weightRatio": 0.74 }
-        ],
-        "randomSelection": false,
-        "trunkHeight": 237,
-        "trunkWeight": 12,
-        "trunkAngle": 0,
-        "angleVariation": 3,
-        "positionVariation": 0.06,
-        "lengthVariation": 0.02,
-        "weightVariation": 0.06,
-        "trunkColor": [108, 85, 68, 256],
-        "colorChange": [-12, 8, -3, 0],
-        "bgColor": 245,
-        "x": 487,
-        "y": 573
+        "x": 975,
+        "y": 655
     },
     {
         "iterations": 6,
@@ -744,8 +746,8 @@ var savedTrees = [
         "trunkColor": [108, 85, 68, 256],
         "colorChange": [-12, 8, -3, 0],
         "bgColor": 245,
-        "x": 471,
-        "y": 540
+        "x": 947,
+        "y": 639
     },
     {
         "iterations": 5,
@@ -759,7 +761,7 @@ var savedTrees = [
         "randomSelection": false,
         "trunkHeight": 250,
         "trunkWeight": 7,
-        "trunkAngle": -3,
+        "trunkAngle": 1,
         "angleVariation": 0,
         "positionVariation": 0.09,
         "lengthVariation": 0,
@@ -767,8 +769,8 @@ var savedTrees = [
         "trunkColor": [30, 59, 50, 256],
         "colorChange": [-4, 11, 17, 0],
         "bgColor": 245,
-        "x": 500,
-        "y": 566
+        "x": 942,
+        "y": 667
     },
     {
         "iterations": 5,
@@ -780,7 +782,7 @@ var savedTrees = [
             { "angle": 0, "positionRatio": 0.08, "lengthRatio": 0.57, "weightRatio": 0.75 }
         ],
         "randomSelection": false,
-        "trunkHeight": 300,
+        "trunkHeight": 346,
         "trunkWeight": 1,
         "trunkAngle": 3,
         "angleVariation": 0,
@@ -790,8 +792,8 @@ var savedTrees = [
         "trunkColor": [132, 130, 134, 256],
         "colorChange": [-9, -5, -2, 0],
         "bgColor": 245,
-        "x": 510,
-        "y": 573
+        "x": 945,
+        "y": 683
     },
     {
         "iterations": 7,
@@ -811,8 +813,8 @@ var savedTrees = [
         "trunkColor": [0, 0, 0, 256],
         "colorChange": [0, 0, 0, 0],
         "bgColor": 245,
-        "x": 538,
-        "y": 341
+        "x": 979,
+        "y": 427
     },
     {
         "iterations": 7,
@@ -832,8 +834,8 @@ var savedTrees = [
         "trunkColor": [0, 0, 0, 256],
         "colorChange": [0, 0, 0, 0],
         "bgColor": 245,
-        "x": 461,
-        "y": 347
+        "x": 935,
+        "y": 410
     },
     {
         "iterations": 5,
@@ -844,7 +846,7 @@ var savedTrees = [
             { "angle": -40, "positionRatio": 1, "lengthRatio": 0.45, "weightRatio": 0.5 }
         ],
         "randomSelection": false,
-        "trunkHeight": 283,
+        "trunkHeight": 350,
         "trunkWeight": 3,
         "trunkAngle": 0,
         "angleVariation": 0,
@@ -854,18 +856,19 @@ var savedTrees = [
         "trunkColor": [207, 114, 0, 256],
         "colorChange": [-30, -22, 21, 0],
         "bgColor": 245,
-        "x": 476,
-        "y": 557
+        "x": 951,
+        "y": 695
     },
     {
         "iterations": 6,
         "branchConfigs": [
             { "angle": -9, "positionRatio": 1, "lengthRatio": 0.56, "weightRatio": 0.62 },
             { "angle": 16, "positionRatio": 0.38, "lengthRatio": 0.6, "weightRatio": 0.65 },
-            { "angle": 9, "positionRatio": 0.17, "lengthRatio": 0.6, "weightRatio": 0.65 }
+            { "angle": 9, "positionRatio": 0.17, "lengthRatio": 0.6, "weightRatio": 0.65 },
+            { "angle": 4, "positionRatio": 0.6, "lengthRatio": 0.65, "weightRatio": 0.66 }
         ],
         "randomSelection": false,
-        "trunkHeight": 100,
+        "trunkHeight": 300,
         "trunkWeight": 4,
         "trunkAngle": 0,
         "angleVariation": 0,
@@ -875,8 +878,8 @@ var savedTrees = [
         "trunkColor": [255, 205, 252, 256],
         "colorChange": [-30, 0, 0, 0],
         "bgColor": 244,
-        "x": 491,
-        "y": 561
+        "x": 927,
+        "y": 689
     }
 ];
 
@@ -884,13 +887,13 @@ var sliderFactory = (function () {
     var main = [
         new Slider(0, 6, "Iterations", () => tree.iterations, v => tree.iterations = v),
         new Slider(1, 5, "Branch factor", () => tree.branchConfigs.length, updateBranchConfigsAndSliders),
-        new Slider(100, 300, "Trunk length", () => tree.trunkHeight, v => tree.trunkHeight = v),
+        new Slider(100, 500, "Trunk length", () => tree.trunkHeight, v => tree.trunkHeight = v),
         new Slider(1, 25, "Trunk weight", () => tree.trunkWeight, v => tree.trunkWeight = v)
     ];
 
     var variation = [
-        new Slider(0, 20, "Angle Variation", () => tree.angleVariation, v => tree.angleVariation = v, 0, [225, 200, 212, 220]),
-        new Slider(0, 0.3, "Position variation", () => tree.positionVariation, v => tree.positionVariation = v, 2, [225, 200, 212, 220]),
+        new Slider(0, 20, "Angle variation", () => tree.angleVariation, v => tree.angleVariation = v, 0, [225, 200, 212, 220]),
+        new Slider(0, 0.3, "Pos. variation", () => tree.positionVariation, v => tree.positionVariation = v, 2, [225, 200, 212, 220]),
         new Slider(0, 0.3, "Length variation", () => tree.lengthVariation, v => tree.lengthVariation = v, 2, [225, 200, 212, 220]),
         new Slider(0, 0.3, "Weight variation", () => tree.weightVariation, v => tree.weightVariation = v, 2, [225, 200, 212, 220])
     ];
@@ -958,3 +961,23 @@ var sliderFactory = (function () {
         }
     }
 })();
+
+function getWindowWidth() {
+    return Math.max(
+        document.body.scrollWidth,
+        document.documentElement.scrollWidth,
+        document.body.offsetWidth,
+        document.documentElement.offsetWidth,
+        document.documentElement.clientWidth
+    );
+}
+
+function getWindowHeight() {
+    return Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight,
+        document.body.offsetHeight,
+        document.documentElement.offsetHeight,
+        document.documentElement.clientHeight
+    );
+}
