@@ -70,20 +70,10 @@ function keyPressed() {
     presetSlider.onKeyPressed();
 }
 
-function getIterationLimit(branchFactor, randomSelection, pushTheLimit) {
-    var x = randomSelection ? 1 : 0;
-    var y = pushTheLimit ? 1 : 0;
+function getIterationLimit(branchFactor) {
+    var level = [100, 14, 9, 7, 6];
 
-    var levelIndex = 2 * randomSelection + pushTheLimit;
-
-    var level = [
-        [100, 10, 6, 5, 4], // normal
-        [100, 12, 7, 6, 5], // pushing it
-        [100, 14, 8, 7, 6], // random selection
-        [100, 15, 9, 8, 7]  // random selection + pushing it
-    ];
-
-    return level[levelIndex][branchFactor - 1];
+    return level[branchFactor - 1];
 }
 
 function setupGridsAndSliders() {
@@ -303,12 +293,10 @@ function Branch(x, y, v, weight, color) {
     this.color = color;
 }
 
-Branch.prototype.render = function () {
-    push();
-    strokeWeight(this.weight);
-    stroke(this.color);
-    line(this.x, this.y, this.x2, this.y2);
-    pop();
+Branch.prototype.renderTo = function (g) {
+    g.strokeWeight(this.weight);
+    g.stroke(this.color);
+    g.line(this.x, this.y, this.x2, this.y2);
 }
 
 // Tree
@@ -349,6 +337,7 @@ Tree.prototype.repopulateBranches = function () {
     }
 
     this.branches = this.branches.concat(branchesToProcess);
+    this.shouldRedraw = true;
 }
 
 Tree.prototype.createSprout = function (p, bc, color) {
@@ -377,9 +366,45 @@ Tree.prototype.createSprout = function (p, bc, color) {
 }
 
 Tree.prototype.render = function () {
-    for (var i = 0; i < this.branches.length; i++) {
-        this.branches[i].render();
+    if (!this.graphics) {
+        this.redrawInternal();
+    };
+
+    if (this.shouldRedraw) {
+        if (this.redrawOperation) {
+            clearTimeout(this.redrawOperation);
+        }
+
+        this.shouldRedraw = false;
+
+        this.redrawOperation = setTimeout(function () {
+            this.redrawInternal();
+
+            this.redrawOperation = null;
+        }.bind(this), 5);
     }
+
+    if (this.redrawOperation) {
+        push();
+
+        fill(0, alpha);
+        strokeWeight(0);
+        text('REDRAWING...', this.x + 50, this.y);
+        pop()
+    }
+
+    image(this.graphics, 0, 0);
+}
+
+Tree.prototype.renderTo = function (g) {
+    for (var i = 0; i < this.branches.length; i++) {
+        this.branches[i].renderTo(g);
+    }
+    return g;
+}
+
+Tree.prototype.redrawInternal = function () {
+    this.graphics = this.renderTo(createGraphics(1600, 900));
 }
 
 Tree.prototype.onMousePressed = function () {
