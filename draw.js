@@ -2,85 +2,18 @@ var tree;
 var controlSliders;
 var grid;
 var colorGrid;
+var actionGrid;
 var presetChoice;
 var presetSlider;
 var activeSlider;
 var hideControls;
 
 function setup() {
-    frameRate(15);
+    frameRate(60);
     createCanvas(1344, 756);
 
     presetSlider = new Slider(0, savedTrees.length - 1, "Presets", () => presetChoice, v => setTheScene(v), 0, [5, 115, 110, 240]);
     presetSlider.setPosition(15, 15);
-
-    var saveButton = createButton('Save');
-    saveButton.position(width - 100, 12);
-    saveButton.mousePressed(function () {
-        savedTrees[presetChoice] = tree.getState();
-        alert('Saved preset ' + presetChoice);
-    });
-
-    var logStateButton = createButton('Log presets');
-    logStateButton.position(width - 100, 40);
-    logStateButton.mousePressed(function () {
-        console.log(JSON.stringify(savedTrees));
-    });
-
-    var saveAsButton = createButton('Save as New');
-    saveAsButton.position(width - 100, 68);
-    saveAsButton.mousePressed(function () {
-        savedTrees.push(tree.getState());
-        presetChoice = savedTrees.length - 1;
-        presetSlider.maxValue = presetChoice;
-        alert('Saved as preset ' + presetChoice);
-    });
-
-    var deleteButton = createButton('Delete');
-    deleteButton.position(width - 100, 96);
-    deleteButton.mousePressed(function () {
-        if (confirm('Are you sure you want to delete preset ' + presetChoice)) {
-            savedTrees.splice(presetChoice, 1);
-            presetChoice = confine(presetChoice, 0, savedTrees.length - 1);
-            presetSlider.maxValue = savedTrees.length - 1;
-            setTheScene(presetChoice);
-        }
-    });
-
-    var randomizeButton = createButton('Randomize');
-    randomizeButton.position(width - 100, 124);
-    randomizeButton.mousePressed(function () {
-        for (var i = 0; i < controlSliders.length; i++) {
-            var s = controlSliders[i];
-            s.setValue(getRandomArbitrary(s.minValue, s.maxValue));
-        }
-    });
-
-    var resetButton = createButton('Reset');
-    resetButton.position(width - 100, 152);
-    resetButton.mousePressed(function () {
-        setTheScene(presetChoice);
-    });
-
-    var downloadButton = createButton('Download');
-    downloadButton.position(width - 100, 176);
-    downloadButton.mousePressed(function () {
-        if (hideControls || confirm('Are you sure you want to download an image without the hiding controls first?')) {
-            save('FractalTree.png');
-        }
-    });
-
-    var shownOnce = false;
-    var hideButton = createButton('Hide controls');
-    hideButton.position(width - 100, 204);
-    hideButton.mousePressed(function () {
-        if (!hideControls && !shownOnce) {
-            alert('Hiding controls makes for a better image when downloading. Note that you can drag the tree by its base');
-            shownOnce = true;
-        }
-        hideControls = !hideControls;
-        hideButton.elt.innerText = hideControls ? 'Unhide' : 'Hide controls';
-    });
 
     setTheScene(getRandomInt(0, savedTrees.length - 1));
 }
@@ -100,6 +33,7 @@ function draw() {
         presetSlider.render();
         grid.render();
         colorGrid.render();
+        actionGrid.render();
     }
 
     tree.render();
@@ -112,6 +46,7 @@ function mousePressed() {
 
     presetSlider.onMousePressed();
     tree.onMousePressed();
+    actionGrid.onMousePressed();
 }
 
 function mouseDragged() {
@@ -123,6 +58,10 @@ function mouseDragged() {
     tree.onMouseDragged();
 }
 
+function mouseReleased() {
+    actionGrid.onMouseReleased();
+}
+
 function keyPressed() {
     for (var i = 0; i < controlSliders.length; i++) {
         controlSliders[i].onKeyPressed();
@@ -131,10 +70,26 @@ function keyPressed() {
     presetSlider.onKeyPressed();
 }
 
+function getIterationLimit(branchFactor, randomSelection, pushTheLimit) {
+    var x = randomSelection ? 1 : 0;
+    var y = pushTheLimit ? 1 : 0;
+
+    var levelIndex = 2 * randomSelection + pushTheLimit;
+
+    var level = [
+        [100, 10, 6, 5, 4], // normal
+        [100, 12, 7, 6, 5], // pushing it
+        [100, 14, 8, 7, 6], // random selection
+        [100, 15, 9, 8, 7]  // random selection + pushing it
+    ];
+
+    return level[levelIndex][branchFactor - 1];
+}
+
 function setupGridsAndSliders() {
     var windowMargin = 10;
     var c = tree.branchConfigs.length;
-    var iterationLimit = c === 2 ? 12 : (c === 3 ? 8 : 6);
+    var iterationLimit = getIterationLimit(tree.branchConfigs.length, tree.randomSelection, false);
     tree.iterations = min(tree.iterations, iterationLimit);
 
     var main = sliderFactory.getMain(iterationLimit);
@@ -146,12 +101,64 @@ function setupGridsAndSliders() {
 
     controlSliders = mainSliders.concat(colorSliders);
 
+    var shownOnce = false;
+
+    var buttons = [
+        new Button('Save',
+            function () {
+                savedTrees[presetChoice] = tree.getState();
+                alert('Saved preset ' + presetChoice);
+            }
+        ),
+        new Button('Save as New', function () {
+            savedTrees.push(tree.getState());
+            presetChoice = savedTrees.length - 1;
+            presetSlider.maxValue = presetChoice;
+            alert('Saved as preset ' + presetChoice);
+        }),
+        new Button('Log json', function () {
+            console.log(JSON.stringify(savedTrees));
+        }),
+        new Button('Delete', function () {
+            if (confirm('Are you sure you want to delete preset ' + presetChoice)) {
+                savedTrees.splice(presetChoice, 1);
+                presetChoice = confine(presetChoice, 0, savedTrees.length - 1);
+                presetSlider.maxValue = savedTrees.length - 1;
+                setTheScene(presetChoice);
+            }
+        }),
+        new Button('Randomize', function () {
+            for (var i = 0; i < controlSliders.length; i++) {
+                var s = controlSliders[i];
+                s.setValue(getRandomArbitrary(s.minValue, s.maxValue));
+            }
+        }),
+        new Button('Reset', function () {
+            setTheScene(presetChoice);
+        }),
+        new Button('Hide controls', function () {
+            if (!hideControls && !shownOnce) {
+                alert('Hiding controls makes for a better image when downloading. Note that you can drag the tree by its base');
+                shownOnce = true;
+            }
+            hideControls = !hideControls;
+            hideButton.elt.innerText = hideControls ? 'Unhide' : 'Hide controls';
+        }),
+        new Button('Download', function () {
+            if (hideControls || confirm('Are you sure you want to download an image without the hiding controls first?')) {
+                save('FractalTree.png');
+            }
+        })
+    ];
+
     grid = new Grid(mainSliders, 4, true);
     colorGrid = new Grid(colorSliders, 2);
+    actionGrid = new Grid(buttons, 2, true);
 
     var h = 370;
     grid.setPosition(windowMargin, 310);
     colorGrid.setPosition(windowMargin, 80);
+    actionGrid.setPosition(300, 12);
 }
 
 var memory = [];
@@ -201,10 +208,10 @@ Slider.prototype.setPosition = function (xPos, yPos) {
     this.sliderY = yPos + this.height - marginRadius;
 }
 
-Slider.prototype.height = 50;
+Slider.prototype.height = 41;
 Slider.prototype.width = 140;
-Slider.prototype.margin = 5;
-Slider.prototype.diameter = 25;
+Slider.prototype.margin = 4;
+Slider.prototype.diameter = 19;
 Slider.prototype.backgroundColor = 240;
 
 Slider.prototype.getValueFromSlider = function (sliderX) {
@@ -517,6 +524,18 @@ Grid.prototype.render = function () {
     }
 }
 
+Grid.prototype.onMousePressed = function () {
+    for (var i = 0; i < this.items.length; i++) {
+        this.items[i].onMousePressed();
+    }
+}
+
+Grid.prototype.onMouseReleased = function () {
+    for (var i = 0; i < this.items.length; i++) {
+        this.items[i].onMouseReleased();
+    }
+}
+
 Grid.prototype.setPosition = function (xPos, yPos) {
     this.x = xPos;
     this.y = yPos;
@@ -643,7 +662,7 @@ var savedTrees = [
         "y": 663
     },
     {
-        "iterations": 8,
+        "iterations": 7,
         "branchConfigs": [
             { "angle": 8, "positionRatio": 1, "lengthRatio": 0.68, "weightRatio": 0.75 },
             { "angle": -8, "positionRatio": 0.72, "lengthRatio": 0.68, "weightRatio": 0.75 },
@@ -962,22 +981,58 @@ var sliderFactory = (function () {
     }
 })();
 
-function getWindowWidth() {
-    return Math.max(
-        document.body.scrollWidth,
-        document.documentElement.scrollWidth,
-        document.body.offsetWidth,
-        document.documentElement.offsetWidth,
-        document.documentElement.clientWidth
-    );
+function Button() {
+
 }
 
-function getWindowHeight() {
-    return Math.max(
-        document.body.scrollHeight,
-        document.documentElement.scrollHeight,
-        document.body.offsetHeight,
-        document.documentElement.offsetHeight,
-        document.documentElement.clientHeight
-    );
+// Button
+function Button(label, onClick, color = [212, 225, 222, 220]) {
+    this.label = label;
+    this.onClick = onClick;
+    this.color = color;
+    this.isBeingClicked = false;
+    this.disabled = false;
+}
+
+Button.prototype.setPosition = function (xPos, yPos) {
+    this.x = xPos;
+    this.y = yPos;
+
+    this.halfY = this.y + this.height / 2;
+}
+
+Button.prototype.height = 20;
+Button.prototype.width = 80;
+Button.prototype.textWidth = 120;
+Button.prototype.textHeight = 12;
+
+Button.prototype.render = function () {
+    if (!this.x) {
+        return;
+    }
+    push();
+
+    fill(this.isBeingClicked ? 120 : this.color);
+    rect(this.x, this.y, this.width, this.height, 10);
+
+    fill(0, alpha);
+    strokeWeight(0);
+    textAlign(CENTER);
+    text(this.label, this.x + 2, this.halfY - this.textHeight / 2, this.width - 1, 20);
+
+    pop();
+}
+
+Button.prototype.onMousePressed = function () {
+    var within = function (val, min, max) { return min < val && val < max }
+    this.isBeingClicked = within(mouseX, this.x, this.x + this.width) && within(mouseY, this.y, this.y + this.height);
+}
+
+Button.prototype.onMouseReleased = function () {
+    var within = function (val, min, max) { return min < val && val < max }
+    var isStillBeingClicked = within(mouseX, this.x, this.x + this.width) && within(mouseY, this.y, this.y + this.height);
+    if (this.isBeingClicked && isStillBeingClicked) {
+        setTimeout(this.onClick.bind(this), 1);
+    }
+    this.isBeingClicked = false;
 }
