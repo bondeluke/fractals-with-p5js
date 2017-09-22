@@ -1,21 +1,19 @@
 var tree;
-var controlSliders;
-var grid;
-var colorGrid;
-var actionGrid;
 var presetChoice;
-var presetSlider;
-var activeSlider;
 var hideControls;
+var grid;
+var presetSlider;
 
 function setup() {
     frameRate(60);
     createCanvas(1344, 756);
 
     presetSlider = new Slider(0, savedTrees.length - 1, "Presets", () => presetChoice, v => setTheScene(v), 0, [5, 115, 110, 240]);
+    presetSlider.setMaxValueRule(() => savedTrees.length - 1);
     presetSlider.setPosition(15, 15);
 
-    setTheScene(getRandomInt(0, savedTrees.length - 1));
+    setTheScene(0);
+    //setTheScene(getRandomInt(0, savedTrees.length - 1));
 }
 
 function setTheScene(choice) {
@@ -31,75 +29,77 @@ function draw() {
 
     if (!hideControls) {
         presetSlider.render();
-        grid.render();
-        colorGrid.render();
-        actionGrid.render();
+
+        for (var i = 0; i < grids.length; i++) {
+            grids[i].render();
+        }
     }
 
     tree.render();
 }
 
 function mousePressed() {
-    for (var i = 0; i < controlSliders.length; i++) {
-        controlSliders[i].onMousePressed();
+    console.log('(' + mouseX + ', ' + mouseY + ')');
+    presetSlider.onMousePressed();
+
+    for (var i = 0; i < grids.length; i++) {
+        if (grids[i].onMousePressed())
+            return;
     }
 
-    presetSlider.onMousePressed();
     tree.onMousePressed();
-    actionGrid.onMousePressed();
 }
 
 function mouseDragged() {
-    for (var i = 0; i < controlSliders.length; i++) {
-        controlSliders[i].onMouseDragged();
+    presetSlider.onMouseDragged();
+
+    for (var i = 0; i < grids.length; i++) {
+        if (grids[i].onMouseDragged())
+            return;
     }
 
-    presetSlider.onMouseDragged();
     tree.onMouseDragged();
 }
 
 function mouseReleased() {
-    actionGrid.onMouseReleased();
+    for (var i = 0; i < grids.length; i++) {
+        grids[i].onMouseReleased();
+    }
+}
+
+function mouseMoved() {
+    for (var i = 0; i < grids.length; i++) {
+        grids[i].onMouseMoved();
+    }
 }
 
 function keyPressed() {
-    for (var i = 0; i < controlSliders.length; i++) {
-        controlSliders[i].onKeyPressed();
-    }
-
     presetSlider.onKeyPressed();
+
+    for (var i = 0; i < grids.length; i++) {
+        grids[i].onKeyPressed();
+    }
 }
 
-function getIterationLimit(branchFactor, randomSelection, pushTheLimit) {
-    var x = randomSelection ? 1 : 0;
-    var y = pushTheLimit ? 1 : 0;
+function getIterationLimit(branchFactor, pushIt) {
+    var pushTheLimit = [100, 14, 9, 7, 6];
+    var safe = [100, 10, 6, 5, 4];
 
-    var levelIndex = 2 * randomSelection + pushTheLimit;
-
-    var level = [
-        [100, 10, 6, 5, 4], // normal
-        [100, 12, 7, 6, 5], // pushing it
-        [100, 14, 8, 7, 6], // random selection
-        [100, 15, 9, 8, 7]  // random selection + pushing it
-    ];
-
-    return level[levelIndex][branchFactor - 1];
+    return pushIt ? pushTheLimit[branchFactor - 1] : safe[branchFactor - 1];
 }
 
 function setupGridsAndSliders() {
     var windowMargin = 10;
     var c = tree.branchConfigs.length;
-    var iterationLimit = getIterationLimit(tree.branchConfigs.length, tree.randomSelection, false);
+    var iterationLimit = getIterationLimit(tree.branchConfigs.length, true);
     tree.iterations = min(tree.iterations, iterationLimit);
 
-    var main = sliderFactory.getMain(iterationLimit);
+    var main = sliderFactory.getMain(iterationLimit, tree.iterations);
     var branchSliders = sliderFactory.getBranchSliders();
     var variation = sliderFactory.getVaration();
     var colorSliders = sliderFactory.getColors();
 
     var mainSliders = main.concat(variation).concat(branchSliders);
-
-    controlSliders = mainSliders.concat(colorSliders);
 
     var shownOnce = false;
 
@@ -113,7 +113,6 @@ function setupGridsAndSliders() {
         new Button('Save as New', function () {
             savedTrees.push(tree.getState());
             presetChoice = savedTrees.length - 1;
-            presetSlider.maxValue = presetChoice;
             alert('Saved as preset ' + presetChoice);
         }),
         new Button('Log json', function () {
@@ -123,7 +122,6 @@ function setupGridsAndSliders() {
             if (confirm('Are you sure you want to delete preset ' + presetChoice)) {
                 savedTrees.splice(presetChoice, 1);
                 presetChoice = confine(presetChoice, 0, savedTrees.length - 1);
-                presetSlider.maxValue = savedTrees.length - 1;
                 setTheScene(presetChoice);
             }
         }),
@@ -136,29 +134,26 @@ function setupGridsAndSliders() {
         new Button('Reset', function () {
             setTheScene(presetChoice);
         }),
-        new Button('Hide controls', function () {
-            if (!hideControls && !shownOnce) {
-                alert('Hiding controls makes for a better image when downloading. Note that you can drag the tree by its base');
-                shownOnce = true;
-            }
-            hideControls = !hideControls;
-            hideButton.elt.innerText = hideControls ? 'Unhide' : 'Hide controls';
-        }),
         new Button('Download', function () {
-            if (hideControls || confirm('Are you sure you want to download an image without the hiding controls first?')) {
+            if (hideControls || confirm('FYI, you can reposition tree by dragging its base. The controls will automatically be removed from the shot. Are you sure you want to download this picture?')) {
+                hideControls = true;
+                redraw();
                 save('FractalTree.png');
+                hideControls = false;
             }
         })
     ];
 
-    grid = new Grid(mainSliders, 4, true);
-    colorGrid = new Grid(colorSliders, 2);
-    actionGrid = new Grid(buttons, 2, true);
+    var grid = new Grid(mainSliders, 4, true);
+    var colorGrid = new Grid(colorSliders, 2);
+    var actionGrid = new Grid(buttons, 2, true);
 
     var h = 370;
     grid.setPosition(windowMargin, 310);
     colorGrid.setPosition(windowMargin, 80);
     actionGrid.setPosition(300, 12);
+
+    grids = [grid, colorGrid, actionGrid];
 }
 
 var memory = [];
@@ -215,13 +210,25 @@ Slider.prototype.diameter = 19;
 Slider.prototype.backgroundColor = 240;
 
 Slider.prototype.getValueFromSlider = function (sliderX) {
-    var range = this.maxValue - this.minValue;
+    var range = this.getMaxValue() - this.minValue;
     var magnitude = (sliderX - this.minSliderX) / (this.maxSliderX - this.minSliderX);
     return (magnitude * range + this.minValue);
 }
 
 Slider.prototype.getDisplayValue = function () {
     return this.label + ": " + this.sourceGet().toFixed(this.precision).toString();
+}
+
+Slider.prototype.setMaxValueRule = function (getter) {
+    return this.maxValueGet = getter;
+}
+
+Slider.prototype.getMaxValue = function () {
+    if (this.maxValueGet) {
+        return this.maxValueGet();
+    }
+
+    return this.maxValue;
 }
 
 Slider.prototype.render = function () {
@@ -233,7 +240,7 @@ Slider.prototype.render = function () {
 
     var bgValue = d ? 175 : this.backgroundColor + (a ? -15 : 0);
     fill(d ? 185 : bgValue, bgValue + (a ? 5 : 0), bgValue, alpha);
-    rect(this.x, this.y, this.width, this.height);
+    rect(this.x, this.y, this.width, this.height, 3);
 
     stroke(0, alpha);
     line(this.minSliderX, this.sliderY, this.maxSliderX, this.sliderY);
@@ -253,15 +260,18 @@ Slider.prototype.onMousePressed = function () {
     if (this.disabled) return;
 
     this.mouseIsOver = dist(mouseX, mouseY, this.getSliderX(), this.sliderY) < this.radius;
-    var within = function (val, min, max) { return min < val && val < max }
     this.active = within(mouseX, this.x, this.x + this.width) && within(mouseY, this.y, this.y + this.height);
+
+    return this.active;
 }
 
 Slider.prototype.onMouseDragged = function () {
     if (this.mouseIsOver) {
         var sliderX = confine(mouseX, this.minSliderX, this.maxSliderX);
         this.setValue(this.getValueFromSlider(sliderX));
+        return true;
     }
+    return false;
 }
 
 Slider.prototype.onKeyPressed = function () {
@@ -279,12 +289,12 @@ Slider.prototype.onKeyPressed = function () {
 
 Slider.prototype.getSliderX = function () {
     var range = this.maxSliderX - this.minSliderX;
-    var magnitude = (this.sourceGet() - this.minValue) / (this.maxValue - this.minValue);
+    var magnitude = (this.sourceGet() - this.minValue) / (this.getMaxValue() - this.minValue);
     return magnitude * range + this.minSliderX;
 }
 
 Slider.prototype.setValue = function (value) {
-    value = confine(localRound(value, this.precision), this.minValue, this.maxValue);
+    value = confine(localRound(value, this.precision), this.minValue, this.getMaxValue());
 
     if (this.sourceGet() != value) {
         this.sourceSet(value);
@@ -303,12 +313,10 @@ function Branch(x, y, v, weight, color) {
     this.color = color;
 }
 
-Branch.prototype.render = function () {
-    push();
-    strokeWeight(this.weight);
-    stroke(this.color);
-    line(this.x, this.y, this.x2, this.y2);
-    pop();
+Branch.prototype.renderTo = function (g) {
+    g.strokeWeight(this.weight);
+    g.stroke(this.color);
+    g.line(this.x, this.y, this.x2, this.y2);
 }
 
 // Tree
@@ -316,39 +324,53 @@ function Tree(initialState) {
     this.setState(initialState);
 }
 
+Tree.prototype.getPushingTheLimit = function () {
+    return this.iterations > getIterationLimit(this.branchConfigs.length, false);
+}
+
 Tree.prototype.repopulateBranches = function () {
-    this.branches = [];
-    var thickness = this.trunkWeight;
-    var c = this.trunkColor;
-    var g = this.colorChange;
-
-    var v = createVector(0, -this.trunkHeight);
-    v.rotate(radians(this.trunkAngle));
-    var trunk = new Branch(this.x, this.y, v, thickness, c);
-    var branchesToProcess = [trunk];
-    var newBranches = [];
-
-    for (var i = 1; i <= this.iterations; i++) {
-        var newColor = [c[0] + i * g[0], c[1] + i * g[1], c[2] + i * g[2], 256];
-        for (var j = 0; j < branchesToProcess.length; j++) {
-            var configs = this.branchConfigs.slice(); // copy the array;
-
-            if (this.randomSelection && i > 1) {
-                var r = getRandomInt(max(configs.length - i, 2), configs.length);
-                configs = shuffleLocal(configs);
-                configs.splice(r);
-            }
-
-            for (var b = 0; b < configs.length; b++) {
-                newBranches.push(this.createSprout(branchesToProcess[j], configs[b], newColor));
-            }
-        }
-        this.branches = this.branches.concat(branchesToProcess);
-        branchesToProcess = newBranches;
-        newBranches = [];
+    if (this.repopulating) {
+        clearTimeout(this.repopulating);
     }
 
-    this.branches = this.branches.concat(branchesToProcess);
+    this.repopulating = setTimeout(function () {
+        this.branches = [];
+        var thickness = this.trunkWeight;
+        var c = this.trunkColor;
+        var g = this.colorChange;
+        this.leastX = this.greatestX = width;
+        this.leastY = this.greatestY = height;
+
+        var v = createVector(0, -this.trunkHeight);
+        v.rotate(radians(this.trunkAngle));
+        var trunk = new Branch(width, height, v, thickness, c); // Place the root in the CENTER of the graphics object.
+        var branchesToProcess = [trunk];
+        var newBranches = [];
+
+        for (var i = 1; i <= this.iterations; i++) {
+            var newColor = [c[0] + i * g[0], c[1] + i * g[1], c[2] + i * g[2], 256];
+            for (var j = 0; j < branchesToProcess.length; j++) {
+                var configs = this.branchConfigs.slice(); // copy the array;
+
+                if (this.randomSelection && i > 1) {
+                    var r = getRandomInt(max(configs.length - i, 2), configs.length);
+                    configs = shuffleLocal(configs);
+                    configs.splice(r);
+                }
+
+                for (var b = 0; b < configs.length; b++) {
+                    newBranches.push(this.createSprout(branchesToProcess[j], configs[b], newColor));
+                }
+            }
+            this.branches = this.branches.concat(branchesToProcess);
+            branchesToProcess = newBranches;
+            newBranches = [];
+        }
+
+        this.branches = this.branches.concat(branchesToProcess);
+        this.redrawInternal();
+        this.repopulating = null;
+    }.bind(this), this.iterations > getIterationLimit(this.branchConfigs.length, false) ? 300 : 1);
 }
 
 Tree.prototype.createSprout = function (p, bc, color) {
@@ -373,29 +395,79 @@ Tree.prototype.createSprout = function (p, bc, color) {
     // Weight
     var weight = p.weight * confine(bc.weightRatio + wr, 0, 1);
 
-    return new Branch(x, y, sv, weight, color);
+    var b = new Branch(x, y, sv, weight, color);
+
+    this.leastX = min(min(b.x, b.x2), this.leastX);
+    this.leastY = min(min(b.y, b.y2), this.leastY);
+    this.greatestX = max(max(x, x + sv.x), this.greatestX);
+    this.greatestY = max(max(y, y + sv.y), this.greatestY);
+
+    return b;
 }
 
 Tree.prototype.render = function () {
-    for (var i = 0; i < this.branches.length; i++) {
-        this.branches[i].render();
+    if (!this.graphics || (this.repopulating && this.getPushingTheLimit())) {
+        push();
+
+        fill(0, alpha);
+        strokeWeight(0);
+        text('REDRAWING...', this.x + 50, this.y);
+        pop()
+    }
+
+    if (this.graphics) {
+        image(this.graphics, this.x - width, this.y - height);
+
+        pop();
+        noFill();
+        stroke((this.bgColor + 128) % 256);
+        strokeWeight(0.5);
+        var diffX = width - this.x;
+        var diffY = height - this.y;
+        var w = this.greatestX - this.leastX;
+        var h = this.greatestY - this.leastY;
+        rect(this.leastX - diffX, this.leastY - diffY, w, h);
+        strokeWeight(1);
+        push();
     }
 }
 
+Tree.prototype.renderTo = function (g) {
+    for (var i = 0; i < this.branches.length; i++) {
+        this.branches[i].renderTo(g);
+    }
+    return g;
+}
+
+Tree.prototype.redrawInternal = function () {
+    this.graphics = this.renderTo(createGraphics(width * 2, height * 2));
+}
+
 Tree.prototype.onMousePressed = function () {
-    this.mouseIsOver = dist(mouseX, mouseY, this.x, this.y) < 80;
+    var dx = width - this.x;
+    var dy = height - this.y;
+    this.mouseIsOver = within(mouseX, this.leastX - dx, this.greatestX - dx) && within(mouseY, this.leastY - dy, this.greatestY - dy);
+    if (this.mouseIsOver) {
+        this.grabX = mouseX;
+        this.grabY = mouseY;
+    }
 }
 
 Tree.prototype.onMouseDragged = function () {
     if (this.mouseIsOver) {
-        this.setPosition(mouseX, mouseY);
+        var dx = mouseX - this.grabX;
+        var dy = mouseY - this.grabY;
+        this.setPosition(this.x + dx, this.y + dy);
+        this.grabX = mouseX;
+        this.grabY = mouseY;
+        return true;
     }
+    return false;
 }
 
 Tree.prototype.setPosition = function (xPos, yPos) {
     this.x = xPos;
     this.y = yPos;
-    this.repopulateBranches();
 }
 
 Tree.prototype.getState = function () {
@@ -497,6 +569,11 @@ function Grid(items, cols = 4, leftToRight = false) {
 }
 
 Grid.prototype.render = function () {
+    push();
+    fill([180, 180, 180, 180]);
+    rect(this.x, this.y, this.width, this.height, 7);
+    pop();
+
     var i = 0;
 
     var a, b;
@@ -525,14 +602,57 @@ Grid.prototype.render = function () {
 }
 
 Grid.prototype.onMousePressed = function () {
+    var anyAffected;
+
     for (var i = 0; i < this.items.length; i++) {
-        this.items[i].onMousePressed();
+        if (this.items[i].onMousePressed)
+            anyAffected = this.items[i].onMousePressed() || anyAffected;
     }
+
+    if (anyAffected)
+        return;
+
+    this.isBeingClicked = this.containsMouse();
 }
 
 Grid.prototype.onMouseReleased = function () {
     for (var i = 0; i < this.items.length; i++) {
-        this.items[i].onMouseReleased();
+        if (this.items[i].onMouseReleased)
+            this.items[i].onMouseReleased();
+    }
+}
+
+Grid.prototype.onMouseMoved = function () {
+    for (var i = 0; i < this.items.length; i++) {
+        if (this.items[i].onMouseMoved)
+            this.items[i].onMouseMoved();
+    }
+}
+
+Grid.prototype.containsMouse = function () {
+    return within(mouseX, this.x, this.x + this.width) && within(mouseY, this.y, this.y + this.height);
+}
+
+Grid.prototype.onMouseDragged = function () {
+    var anyAffected;
+
+    for (var i = 0; i < this.items.length; i++) {
+        if (this.items[i].onMouseDragged)
+            anyAffected = this.items[i].onMouseDragged() || anyAffected;
+    }
+
+    if (anyAffected)
+        return;
+
+    if (this.isBeingClicked) {
+        this.setPosition(mouseX - this.width / 2, mouseY - this.height / 2);
+    }
+}
+
+Grid.prototype.onKeyPressed = function () {
+    for (var i = 0; i < this.items.length; i++) {
+        if (this.items[i].onKeyPressed)
+            this.items[i].onKeyPressed();
     }
 }
 
@@ -554,6 +674,8 @@ Grid.prototype.getNumRows = function () {
 Grid.prototype.getHeight = function () {
     return this.margin + (this.margin + this.items[0].height) * this.getNumRows();
 }
+
+
 
 var savedTrees = [
     {
@@ -904,7 +1026,12 @@ var savedTrees = [
 
 var sliderFactory = (function () {
     var main = [
-        new Slider(0, 6, "Iterations", () => tree.iterations, v => tree.iterations = v),
+        new Slider(0, 6, "Iterations", () => tree.iterations,
+            v => {
+                tree.iterations = v;
+                main[0].color = tree.getPushingTheLimit() ? [200, 50, 50, 240] : main[1].color;
+            }
+        ),
         new Slider(1, 5, "Branch factor", () => tree.branchConfigs.length, updateBranchConfigsAndSliders),
         new Slider(100, 500, "Trunk length", () => tree.trunkHeight, v => tree.trunkHeight = v),
         new Slider(1, 25, "Trunk weight", () => tree.trunkWeight, v => tree.trunkWeight = v)
@@ -932,7 +1059,8 @@ var sliderFactory = (function () {
     ];
 
     return {
-        getMain: function (iterationLimit) {
+        getMain: function (iterationLimit, currentCount) {
+            main[0].color = tree.getPushingTheLimit() ? [200, 50, 50, 240] : main[1].color;
             main[0].maxValue = iterationLimit;
             return main;
         },
@@ -981,12 +1109,8 @@ var sliderFactory = (function () {
     }
 })();
 
-function Button() {
-
-}
-
 // Button
-function Button(label, onClick, color = [212, 225, 222, 220]) {
+function Button(label, onClick, color = [235, 242, 242, 255]) {
     this.label = label;
     this.onClick = onClick;
     this.color = color;
@@ -1012,8 +1136,8 @@ Button.prototype.render = function () {
     }
     push();
 
-    fill(this.isBeingClicked ? 120 : this.color);
-    rect(this.x, this.y, this.width, this.height, 10);
+    fill(this.getFill());
+    rect(this.x, this.y, this.width, this.height, 7);
 
     fill(0, alpha);
     strokeWeight(0);
@@ -1023,16 +1147,47 @@ Button.prototype.render = function () {
     pop();
 }
 
+Button.prototype.getFill = function () {
+    var c = this.color;
+    var c0 = c[0], c1 = c[1], c2 = c[2];
+    var a = c[3];
+
+    var d = 7;
+
+    if (this.hover) {
+        return [c0 + d, c1 + d, c2 + d, a];
+    }
+
+    if (this.isBeingClicked) {
+        return [c0 - d, c1 - d, c2 - d, a];
+    }
+
+    return c;
+}
+
+Button.prototype.containsMouse = function () {
+    return within(mouseX, this.x, this.x + this.width) && within(mouseY, this.y, this.y + this.height);
+}
+
 Button.prototype.onMousePressed = function () {
-    var within = function (val, min, max) { return min < val && val < max }
-    this.isBeingClicked = within(mouseX, this.x, this.x + this.width) && within(mouseY, this.y, this.y + this.height);
+    this.isBeingClicked = this.containsMouse();
+    if (this.isBeingClicked)
+        this.hover = false;
+
+    return this.isBeingClicked;
 }
 
 Button.prototype.onMouseReleased = function () {
-    var within = function (val, min, max) { return min < val && val < max }
-    var isStillBeingClicked = within(mouseX, this.x, this.x + this.width) && within(mouseY, this.y, this.y + this.height);
-    if (this.isBeingClicked && isStillBeingClicked) {
+    if (this.isBeingClicked && this.containsMouse()) {
         setTimeout(this.onClick.bind(this), 1);
     }
     this.isBeingClicked = false;
+}
+
+Button.prototype.onMouseMoved = function () {
+    this.hover = this.containsMouse() && !this.isBeingClicked;
+}
+
+function within(val, min, max) {
+    return min < val && val < max;
 }
