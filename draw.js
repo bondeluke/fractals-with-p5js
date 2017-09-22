@@ -12,7 +12,7 @@ function setup() {
     presetSlider.setMaxValueRule(() => savedTrees.length - 1);
     presetSlider.setPosition(15, 15);
 
-    setTheScene(0);
+    setTheScene(1);
     //setTheScene(getRandomInt(0, savedTrees.length - 1));
 }
 
@@ -30,7 +30,7 @@ function draw() {
     if (!hideControls) {
         presetSlider.render();
 
-        for (var i = 0; i < grids.length; i++) {
+        for (var i = grids.length - 1; i >= 0; i--) {
             grids[i].render();
         }
     }
@@ -39,8 +39,8 @@ function draw() {
 }
 
 function mousePressed() {
-    console.log('(' + mouseX + ', ' + mouseY + ')');
-    presetSlider.onMousePressed();
+    if (presetSlider.onMousePressed())
+        return;
 
     for (var i = 0; i < grids.length; i++) {
         if (grids[i].onMousePressed())
@@ -51,7 +51,8 @@ function mousePressed() {
 }
 
 function mouseDragged() {
-    presetSlider.onMouseDragged();
+    if (presetSlider.onMouseDragged())
+        return;
 
     for (var i = 0; i < grids.length; i++) {
         if (grids[i].onMouseDragged())
@@ -141,6 +142,13 @@ function setupGridsAndSliders() {
                 save('FractalTree.png');
                 hideControls = false;
             }
+        }),
+        new Button('Center', function () {
+            var w = tree.greatestX - tree.leastX;
+            var h = tree.greatestY - tree.leastY;
+            var mx = (width - w) / 2;
+            var my = (height - h) / 2;
+            tree.setPosition(width / 2, my + h); // Todo: correct x position
         })
     ];
 
@@ -151,9 +159,9 @@ function setupGridsAndSliders() {
     var h = 370;
     grid.setPosition(windowMargin, 310);
     colorGrid.setPosition(windowMargin, 80);
-    actionGrid.setPosition(300, 12);
+    actionGrid.setPosition(350, 100);
 
-    grids = [grid, colorGrid, actionGrid];
+    grids = [actionGrid, colorGrid, grid]; // Order by z index descending
 }
 
 var memory = [];
@@ -426,7 +434,7 @@ Tree.prototype.render = function () {
         var diffY = height - this.y;
         var w = this.greatestX - this.leastX;
         var h = this.greatestY - this.leastY;
-        rect(this.leastX - diffX, this.leastY - diffY, w, h);
+        //rect(this.leastX - diffX, this.leastY - diffY, w, h);
         strokeWeight(1);
         push();
     }
@@ -610,9 +618,10 @@ Grid.prototype.onMousePressed = function () {
     }
 
     if (anyAffected)
-        return;
+        return true;
 
     this.isBeingClicked = this.containsMouse();
+    return this.isBeingClicked;
 }
 
 Grid.prototype.onMouseReleased = function () {
@@ -642,11 +651,13 @@ Grid.prototype.onMouseDragged = function () {
     }
 
     if (anyAffected)
-        return;
+        return true;
 
     if (this.isBeingClicked) {
         this.setPosition(mouseX - this.width / 2, mouseY - this.height / 2);
     }
+
+    return this.isBeingClicked;
 }
 
 Grid.prototype.onKeyPressed = function () {
