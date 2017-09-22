@@ -70,19 +70,20 @@ function keyPressed() {
     presetSlider.onKeyPressed();
 }
 
-function getIterationLimit(branchFactor) {
-    var level = [100, 14, 9, 7, 6];
+function getIterationLimit(branchFactor, pushIt) {
+    var pushTheLimit = [100, 14, 9, 7, 6];
+    var safe = [100, 10, 6, 5, 4];
 
-    return level[branchFactor - 1];
+    return pushIt ? pushTheLimit[branchFactor - 1] : safe[branchFactor - 1];
 }
 
 function setupGridsAndSliders() {
     var windowMargin = 10;
     var c = tree.branchConfigs.length;
-    var iterationLimit = getIterationLimit(tree.branchConfigs.length, tree.randomSelection, false);
+    var iterationLimit = getIterationLimit(tree.branchConfigs.length, true);
     tree.iterations = min(tree.iterations, iterationLimit);
 
-    var main = sliderFactory.getMain(iterationLimit);
+    var main = sliderFactory.getMain(iterationLimit, tree.iterations);
     var branchSliders = sliderFactory.getBranchSliders();
     var variation = sliderFactory.getVaration();
     var colorSliders = sliderFactory.getColors();
@@ -304,40 +305,52 @@ function Tree(initialState) {
     this.setState(initialState);
 }
 
+Tree.prototype.getPushingTheLimit = function() {
+    return this.iterations > getIterationLimit(this.branchConfigs.length, false);
+}
+
 Tree.prototype.repopulateBranches = function () {
-    this.branches = [];
-    var thickness = this.trunkWeight;
-    var c = this.trunkColor;
-    var g = this.colorChange;
-
-    var v = createVector(0, -this.trunkHeight);
-    v.rotate(radians(this.trunkAngle));
-    var trunk = new Branch(this.x, this.y, v, thickness, c);
-    var branchesToProcess = [trunk];
-    var newBranches = [];
-
-    for (var i = 1; i <= this.iterations; i++) {
-        var newColor = [c[0] + i * g[0], c[1] + i * g[1], c[2] + i * g[2], 256];
-        for (var j = 0; j < branchesToProcess.length; j++) {
-            var configs = this.branchConfigs.slice(); // copy the array;
-
-            if (this.randomSelection && i > 1) {
-                var r = getRandomInt(max(configs.length - i, 2), configs.length);
-                configs = shuffleLocal(configs);
-                configs.splice(r);
-            }
-
-            for (var b = 0; b < configs.length; b++) {
-                newBranches.push(this.createSprout(branchesToProcess[j], configs[b], newColor));
-            }
-        }
-        this.branches = this.branches.concat(branchesToProcess);
-        branchesToProcess = newBranches;
-        newBranches = [];
+    if (this.repopulating) {
+        clearTimeout(this.repopulating);
     }
 
-    this.branches = this.branches.concat(branchesToProcess);
-    this.shouldRedraw = true;
+    this.repopulating = setTimeout(function () {
+        this.branches = [];
+        var thickness = this.trunkWeight;
+        var c = this.trunkColor;
+        var g = this.colorChange;
+
+        var v = createVector(0, -this.trunkHeight);
+        v.rotate(radians(this.trunkAngle));
+        var trunk = new Branch(this.x, this.y, v, thickness, c);
+        var branchesToProcess = [trunk];
+        var newBranches = [];
+
+        for (var i = 1; i <= this.iterations; i++) {
+            var newColor = [c[0] + i * g[0], c[1] + i * g[1], c[2] + i * g[2], 256];
+            for (var j = 0; j < branchesToProcess.length; j++) {
+                var configs = this.branchConfigs.slice(); // copy the array;
+
+                if (this.randomSelection && i > 1) {
+                    var r = getRandomInt(max(configs.length - i, 2), configs.length);
+                    configs = shuffleLocal(configs);
+                    configs.splice(r);
+                }
+
+                for (var b = 0; b < configs.length; b++) {
+                    newBranches.push(this.createSprout(branchesToProcess[j], configs[b], newColor));
+                }
+            }
+            this.branches = this.branches.concat(branchesToProcess);
+            branchesToProcess = newBranches;
+            newBranches = [];
+        }
+
+
+        this.branches = this.branches.concat(branchesToProcess);
+        this.redrawInternal();
+        this.repopulating = null;
+    }.bind(this), this.iterations > getIterationLimit(this.branchConfigs.length, false) ? 300 : 1);
 }
 
 Tree.prototype.createSprout = function (p, bc, color) {
@@ -366,25 +379,7 @@ Tree.prototype.createSprout = function (p, bc, color) {
 }
 
 Tree.prototype.render = function () {
-    if (!this.graphics) {
-        this.redrawInternal();
-    };
-
-    if (this.shouldRedraw) {
-        if (this.redrawOperation) {
-            clearTimeout(this.redrawOperation);
-        }
-
-        this.shouldRedraw = false;
-
-        this.redrawOperation = setTimeout(function () {
-            this.redrawInternal();
-
-            this.redrawOperation = null;
-        }.bind(this), 5);
-    }
-
-    if (this.redrawOperation) {
+    if (!this.graphics || (this.repopulating && this.getPushingTheLimit())) {
         push();
 
         fill(0, alpha);
@@ -393,7 +388,9 @@ Tree.prototype.render = function () {
         pop()
     }
 
-    image(this.graphics, 0, 0);
+    if (this.graphics) {
+        image(this.graphics, 0, 0);
+    }
 }
 
 Tree.prototype.renderTo = function (g) {
@@ -929,7 +926,12 @@ var savedTrees = [
 
 var sliderFactory = (function () {
     var main = [
-        new Slider(0, 6, "Iterations", () => tree.iterations, v => tree.iterations = v),
+        new Slider(0, 6, "Iterations", () => tree.iterations,
+            v => {
+                tree.iterations = v;
+                main[0].color = tree.getPushingTheLimit() ? [200, 50, 50, 240] : main[1].color;
+            }
+        ),
         new Slider(1, 5, "Branch factor", () => tree.branchConfigs.length, updateBranchConfigsAndSliders),
         new Slider(100, 500, "Trunk length", () => tree.trunkHeight, v => tree.trunkHeight = v),
         new Slider(1, 25, "Trunk weight", () => tree.trunkWeight, v => tree.trunkWeight = v)
@@ -957,7 +959,8 @@ var sliderFactory = (function () {
     ];
 
     return {
-        getMain: function (iterationLimit) {
+        getMain: function (iterationLimit, currentCount) {
+            main[0].color = tree.getPushingTheLimit() ? [200, 50, 50, 240] : main[1].color;
             main[0].maxValue = iterationLimit;
             return main;
         },
