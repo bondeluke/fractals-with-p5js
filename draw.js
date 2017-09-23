@@ -437,9 +437,8 @@ Tree.prototype.render = function () {
     var redrawing = !this.graphics || (this.repopulating && this.getPushingTheLimit());
 
     if (this.graphics) {
-        //imageMode(CENTER);
-        debugger;
-        image(this.graphics, this.x - width, this.y - height);
+        imageMode(CENTER);
+        image(this.graphics, this.x, this.y);
 
         if (redrawing) {
             var e = this.graphicsTrunkWeight / 2;
