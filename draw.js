@@ -284,6 +284,12 @@ Slider.prototype.onMouseDragged = function () {
     return false;
 }
 
+Slider.prototype.onMouseReleased = function () {
+    this.active = this.active && within(mouseX, this.x, this.x + this.width) && within(mouseY, this.y, this.y + this.height);
+    this.mouseIsOver = false;
+}
+
+
 Slider.prototype.onKeyPressed = function () {
     if (!this.active) return;
 
@@ -629,6 +635,11 @@ Grid.prototype.render = function () {
 }
 
 Grid.prototype.onMousePressed = function () {
+    this.isBeingClicked = this.containsMouse();
+
+    if (!this.isBeingClicked)
+        return false
+
     var anyAffected;
 
     for (var i = 0; i < this.items.length; i++) {
@@ -636,10 +647,12 @@ Grid.prototype.onMousePressed = function () {
             anyAffected = this.items[i].onMousePressed() || anyAffected;
     }
 
-    if (anyAffected)
+    if (anyAffected) {
+        this.mouseOverChild = true;
         return true;
+    };
 
-    this.isBeingClicked = this.containsMouse();
+    this.mouseOverChild = false;
 
     if (this.isBeingClicked) {
         this.grabX = mouseX;
@@ -649,23 +662,14 @@ Grid.prototype.onMousePressed = function () {
     return this.isBeingClicked;
 }
 
-Tree.prototype.onMouseDragged = function () {
-    if (this.mouseIsOverAndDown) {
-        var dx = mouseX - this.grabX;
-        var dy = mouseY - this.grabY;
-        this.setPosition(this.x + dx, this.y + dy);
-        this.grabX = mouseX;
-        this.grabY = mouseY;
-        return true;
-    }
-    return false;
-}
-
 Grid.prototype.onMouseReleased = function () {
     for (var i = 0; i < this.items.length; i++) {
         if (this.items[i].onMouseReleased)
             this.items[i].onMouseReleased();
     }
+
+    this.isBeingClicked = false;
+    this.mouseOverChild = false;
 }
 
 Grid.prototype.onMouseMoved = function () {
@@ -690,7 +694,7 @@ Grid.prototype.onMouseDragged = function () {
     if (anyAffected)
         return true;
 
-    if (this.isBeingClicked) {
+    if (this.isBeingClicked && !this.mouseOverChild) {
         var dx = mouseX - this.grabX;
         var dy = mouseY - this.grabY;
         this.setPosition(this.x + dx, this.y + dy);
