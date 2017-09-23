@@ -3,10 +3,13 @@ var presetChoice;
 var hideControls;
 var grid;
 var presetSlider;
+var spinner;
 
 function setup() {
     frameRate(60);
     createCanvas(1344, 756);
+
+    //spinner = loadImage("assets/spinner.gif", function () { alert('s'); });
 
     presetSlider = new Slider(0, savedTrees.length - 1, "Presets", () => presetChoice, v => setTheScene(v), 0, [5, 115, 110, 240]);
     presetSlider.setMaxValueRule(() => savedTrees.length - 1);
@@ -438,26 +441,33 @@ Tree.prototype.toCanvasY = function (graphicsY) {
 }
 
 Tree.prototype.render = function () {
-    if (!this.graphics || (this.repopulating && this.getPushingTheLimit())) {
-        push();
-
-        fill(0, alpha);
-        strokeWeight(0);
-        text('REDRAWING...', this.x + 50, this.y);
-        pop()
-    }
+    var redrawing = !this.graphics || (this.repopulating && this.getPushingTheLimit()); 
 
     if (this.graphics) {
         image(this.graphics, this.x - width, this.y - height);
 
-        // show bounding box
-        //pop();
-        //noFill();
-        //stroke((this.bgColor + 128) % 256);
-        //strokeWeight(0.5);
-        //rect(this.toCanvasX(this.leastX), this.toCanvasY(this.leastY), this.getWidth(), this.getHeight());
-        //strokeWeight(1);
-        //push();
+        if (redrawing) {
+            var e = this.graphicsTrunkWeight / 2;
+            pop();
+            fill(this.bgColor, 150);
+            noStroke();
+            //stroke((this.bgColor + 128) % 256); // show bounding box
+            rect(this.toCanvasX(this.leastX) - e, this.toCanvasY(this.leastY) - e, this.getWidth() + 2 * e, this.getHeight() + 2 * e);
+            stroke(1); // p5js forces this
+            push();
+        }
+    }
+
+    if (redrawing) {
+        push();
+        fill(0, alpha);
+        strokeWeight(0);
+        var x = this.toCanvasX(this.leastX) + this.getWidth() / 2;
+        var y = this.toCanvasY(this.leastY) + this.getHeight() / 2;
+        textAlign(CENTER);
+        textSize(25);
+        text('[RE-DRAWING]', this.toCanvasX(this.leastX) + this.getWidth() / 2, this.toCanvasY(this.leastY) + this.getHeight() / 2);
+        pop()
     }
 }
 
@@ -470,6 +480,7 @@ Tree.prototype.renderTo = function (g) {
 
 Tree.prototype.redrawInternal = function () {
     this.graphics = this.renderTo(createGraphics(width * 2, height * 2));
+    this.graphicsTrunkWeight = this.trunkWeight;
 }
 
 Tree.prototype.onMousePressed = function () {
