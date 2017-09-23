@@ -66,6 +66,8 @@ function mouseReleased() {
     for (var i = 0; i < grids.length; i++) {
         grids[i].onMouseReleased();
     }
+
+    tree.onMouseReleased()
 }
 
 function mouseMoved() {
@@ -144,11 +146,11 @@ function setupGridsAndSliders() {
             }
         }),
         new Button('Center', function () {
-            var w = tree.greatestX - tree.leastX;
-            var h = tree.greatestY - tree.leastY;
-            var mx = (width - w) / 2;
-            var my = (height - h) / 2;
-            tree.setPosition(width / 2, my + h); // Todo: correct x position
+            var mx = (width - tree.getWidth()) / 2;
+            var my = (height - tree.getHeight()) / 2;
+            var cornerToRootX = tree.x - tree.toCanvasX(tree.leastX);
+            var cornerToRootY = tree.y - tree.toCanvasY(tree.leastY);
+            tree.setPosition(mx + cornerToRootX, my + cornerToRootY); // Todo: correct x position
         })
     ];
 
@@ -413,6 +415,22 @@ Tree.prototype.createSprout = function (p, bc, color) {
     return b;
 }
 
+Tree.prototype.getWidth = function () {
+    return this.greatestX - this.leastX;
+}
+
+Tree.prototype.getHeight = function () {
+    return this.greatestY - this.leastY;
+}
+
+Tree.prototype.toCanvasX = function (graphicsX) {
+    return graphicsX - width + this.x;
+}
+
+Tree.prototype.toCanvasY = function (graphicsY) {
+    return graphicsY - height + this.y;
+}
+
 Tree.prototype.render = function () {
     if (!this.graphics || (this.repopulating && this.getPushingTheLimit())) {
         push();
@@ -426,17 +444,14 @@ Tree.prototype.render = function () {
     if (this.graphics) {
         image(this.graphics, this.x - width, this.y - height);
 
-        pop();
-        noFill();
-        stroke((this.bgColor + 128) % 256);
-        strokeWeight(0.5);
-        var diffX = width - this.x;
-        var diffY = height - this.y;
-        var w = this.greatestX - this.leastX;
-        var h = this.greatestY - this.leastY;
-        //rect(this.leastX - diffX, this.leastY - diffY, w, h);
-        strokeWeight(1);
-        push();
+        // show bounding box
+        //pop();
+        //noFill();
+        //stroke((this.bgColor + 128) % 256);
+        //strokeWeight(0.5);
+        //rect(this.toCanvasX(this.leastX), this.toCanvasY(this.leastY), this.getWidth(), this.getHeight());
+        //strokeWeight(1);
+        //push();
     }
 }
 
@@ -452,17 +467,17 @@ Tree.prototype.redrawInternal = function () {
 }
 
 Tree.prototype.onMousePressed = function () {
-    var dx = width - this.x;
-    var dy = height - this.y;
-    this.mouseIsOver = within(mouseX, this.leastX - dx, this.greatestX - dx) && within(mouseY, this.leastY - dy, this.greatestY - dy);
-    if (this.mouseIsOver) {
+    this.mouseIsOverAndDown = within(mouseX, this.toCanvasX(this.leastX), this.toCanvasX(this.greatestX))
+        && within(mouseY, this.toCanvasY(this.leastY), this.toCanvasY(this.greatestY));
+
+    if (this.mouseIsOverAndDown) {
         this.grabX = mouseX;
         this.grabY = mouseY;
     }
 }
 
 Tree.prototype.onMouseDragged = function () {
-    if (this.mouseIsOver) {
+    if (this.mouseIsOverAndDown) {
         var dx = mouseX - this.grabX;
         var dy = mouseY - this.grabY;
         this.setPosition(this.x + dx, this.y + dy);
@@ -471,6 +486,10 @@ Tree.prototype.onMouseDragged = function () {
         return true;
     }
     return false;
+}
+
+Tree.prototype.onMouseReleased = function () {
+    this.mouseIsOverAndDown = false;
 }
 
 Tree.prototype.setPosition = function (xPos, yPos) {
@@ -621,7 +640,25 @@ Grid.prototype.onMousePressed = function () {
         return true;
 
     this.isBeingClicked = this.containsMouse();
+
+    if (this.isBeingClicked) {
+        this.grabX = mouseX;
+        this.grabY = mouseY;
+    }
+
     return this.isBeingClicked;
+}
+
+Tree.prototype.onMouseDragged = function () {
+    if (this.mouseIsOverAndDown) {
+        var dx = mouseX - this.grabX;
+        var dy = mouseY - this.grabY;
+        this.setPosition(this.x + dx, this.y + dy);
+        this.grabX = mouseX;
+        this.grabY = mouseY;
+        return true;
+    }
+    return false;
 }
 
 Grid.prototype.onMouseReleased = function () {
@@ -654,7 +691,11 @@ Grid.prototype.onMouseDragged = function () {
         return true;
 
     if (this.isBeingClicked) {
-        this.setPosition(mouseX - this.width / 2, mouseY - this.height / 2);
+        var dx = mouseX - this.grabX;
+        var dy = mouseY - this.grabY;
+        this.setPosition(this.x + dx, this.y + dy);
+        this.grabX = mouseX;
+        this.grabY = mouseY;
     }
 
     return this.isBeingClicked;
