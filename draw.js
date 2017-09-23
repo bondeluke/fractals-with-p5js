@@ -66,7 +66,7 @@ function mouseReleased() {
         grids[i].onMouseReleased();
     }
 
-    tree.onMouseReleased()
+    tree.onMouseReleased();
 }
 
 function mouseMoved() {
@@ -102,8 +102,6 @@ function setupGridsAndSliders() {
     var colorSliders = sliderFactory.getColors();
 
     var mainSliders = main.concat(variation).concat(branchSliders);
-
-    var shownOnce = false;
 
     var buttons = [
         new Button('Save',
@@ -149,7 +147,7 @@ function setupGridsAndSliders() {
             var my = (height - tree.getHeight()) / 2;
             var cornerToRootX = tree.x - tree.toCanvasX(tree.leastX);
             var cornerToRootY = tree.y - tree.toCanvasY(tree.leastY);
-            tree.setPosition(mx + cornerToRootX, my + cornerToRootY); // Todo: correct x position
+            tree.setPosition(mx + cornerToRootX, my + cornerToRootY);
         })
     ];
 
@@ -157,10 +155,9 @@ function setupGridsAndSliders() {
     var colorGrid = new Grid(colorSliders, 2);
     var actionGrid = new Grid(buttons, 2, true);
 
-    var h = 370;
     grid.setPosition(windowMargin, 310);
     colorGrid.setPosition(windowMargin, 80);
-    actionGrid.setPosition(350, 100);
+    actionGrid.setPosition(350, 120);
 
     grids = [actionGrid, colorGrid, grid]; // Order by z index descending
 }
@@ -266,7 +263,7 @@ Slider.prototype.render = function () {
 }
 
 Slider.prototype.onMousePressed = function () {
-    if (this.disabled) return;
+    if (this.disabled) return false;
 
     this.mouseIsOver = dist(mouseX, mouseY, this.getSliderX(), this.sliderY) < this.radius;
     this.active = within(mouseX, this.x, this.x + this.width) && within(mouseY, this.y, this.y + this.height);
@@ -311,7 +308,7 @@ Slider.prototype.getSliderX = function () {
 Slider.prototype.setValue = function (value) {
     value = confine(localRound(value, this.precision), this.minValue, this.getMaxValue());
 
-    if (this.sourceGet() != value) {
+    if (this.sourceGet() !== value) {
         this.sourceSet(value);
         tree.repopulateBranches();
     }
@@ -358,7 +355,7 @@ Tree.prototype.repopulateBranches = function () {
 
         var v = createVector(0, -this.trunkHeight);
         v.rotate(radians(this.trunkAngle));
-        var trunk = new Branch(width, height, v, thickness, c); // Place the root in the CENTER of the graphics object.
+        var trunk = new Branch(1344, 756, v, thickness, c); // Place the root in the CENTER of the graphics object.
         var branchesToProcess = [trunk];
         var newBranches = [];
 
@@ -437,9 +434,11 @@ Tree.prototype.toCanvasY = function (graphicsY) {
 }
 
 Tree.prototype.render = function () {
-    var redrawing = !this.graphics || (this.repopulating && this.getPushingTheLimit()); 
+    var redrawing = !this.graphics || (this.repopulating && this.getPushingTheLimit());
 
     if (this.graphics) {
+        //imageMode(CENTER);
+        debugger;
         image(this.graphics, this.x - width, this.y - height);
 
         if (redrawing) {
@@ -449,7 +448,7 @@ Tree.prototype.render = function () {
             noStroke();
             //stroke((this.bgColor + 128) % 256); // show bounding box
             rect(this.toCanvasX(this.leastX) - e, this.toCanvasY(this.leastY) - e, this.getWidth() + 2 * e, this.getHeight() + 2 * e);
-            stroke(1); // p5js forces this
+            stroke(1); // p5js forces this (bug)
             push();
         }
     }
@@ -462,8 +461,8 @@ Tree.prototype.render = function () {
         var y = this.toCanvasY(this.leastY) + this.getHeight() / 2;
         textAlign(CENTER);
         textSize(25);
-        text('[RE-DRAWING]', this.toCanvasX(this.leastX) + this.getWidth() / 2, this.toCanvasY(this.leastY) + this.getHeight() / 2);
-        pop()
+        text('[RE-DRAWING]', x, y);
+        pop();
     }
 }
 
@@ -475,7 +474,9 @@ Tree.prototype.renderTo = function (g) {
 }
 
 Tree.prototype.redrawInternal = function () {
-    this.graphics = this.renderTo(createGraphics(width * 2, height * 2));
+    var g = createGraphics(width * 2, height * 2);
+    g.pixelDensity(1); // this was a tricky one.
+    this.graphics = this.renderTo(g);
     this.graphicsTrunkWeight = this.trunkWeight;
 }
 
@@ -645,9 +646,9 @@ Grid.prototype.onMousePressed = function () {
     this.isBeingClicked = this.containsMouse();
 
     if (!this.isBeingClicked)
-        return false
+        return false;
 
-    var anyAffected;
+    var anyAffected = false;
 
     for (var i = 0; i < this.items.length; i++) {
         if (this.items[i].onMousePressed)
@@ -691,7 +692,7 @@ Grid.prototype.containsMouse = function () {
 }
 
 Grid.prototype.onMouseDragged = function () {
-    var anyAffected;
+    var anyAffected = false;
 
     for (var i = 0; i < this.items.length; i++) {
         if (this.items[i].onMouseDragged)
@@ -737,7 +738,6 @@ Grid.prototype.getNumRows = function () {
 Grid.prototype.getHeight = function () {
     return this.margin + (this.margin + this.items[0].height) * this.getNumRows();
 }
-
 
 
 var savedTrees = [
@@ -1122,7 +1122,7 @@ var sliderFactory = (function () {
     ];
 
     return {
-        getMain: function (iterationLimit, currentCount) {
+        getMain: function (iterationLimit) {
             main[0].color = tree.getPushingTheLimit() ? [200, 50, 50, 240] : main[1].color;
             main[0].maxValue = iterationLimit;
             return main;
