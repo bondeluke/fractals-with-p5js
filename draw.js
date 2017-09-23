@@ -3,20 +3,16 @@ var presetChoice;
 var hideControls;
 var grid;
 var presetSlider;
-var spinner;
 
 function setup() {
     frameRate(60);
     createCanvas(1344, 756);
 
-    //spinner = loadImage("assets/spinner.gif", function () { alert('s'); });
-
     presetSlider = new Slider(0, savedTrees.length - 1, "Presets", () => presetChoice, v => setTheScene(v), 0, [5, 115, 110, 240]);
     presetSlider.setMaxValueRule(() => savedTrees.length - 1);
     presetSlider.setPosition(15, 15);
 
-    setTheScene(1);
-    //setTheScene(getRandomInt(0, savedTrees.length - 1));
+    setTheScene(7);
 }
 
 function setTheScene(choice) {
