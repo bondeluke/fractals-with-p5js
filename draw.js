@@ -10,7 +10,7 @@ function setup() {
 
     presetSlider = new Slider(0, savedTrees.length - 1, "Presets", () => presetChoice, v => setTheScene(v), 0, [5, 115, 110, 240]);
     presetSlider.setMaxValueRule(() => savedTrees.length - 1);
-    presetSlider.setPosition(15, 15);
+    presetSlider.setPosition(140, 15);
 
     setTheScene(7);
 }
@@ -27,7 +27,7 @@ function draw() {
     background(tree.bgColor);
 
     if (!hideControls) {
-        presetSlider.render();
+        //presetSlider.render();
 
         for (var i = grids.length - 1; i >= 0; i--) {
             grids[i].render();
@@ -91,17 +91,8 @@ function getIterationLimit(branchFactor, pushIt) {
 }
 
 function setupGridsAndSliders() {
-    var windowMargin = 10;
-    var c = tree.branchConfigs.length;
     var iterationLimit = getIterationLimit(tree.branchConfigs.length, true);
     tree.iterations = min(tree.iterations, iterationLimit);
-
-    var main = sliderFactory.getMain(iterationLimit, tree.iterations);
-    var branchSliders = sliderFactory.getBranchSliders();
-    var variation = sliderFactory.getVaration();
-    var colorSliders = sliderFactory.getColors();
-
-    var mainSliders = main.concat(variation).concat(branchSliders);
 
     var buttons = [
         new Button('Save',
@@ -126,16 +117,13 @@ function setupGridsAndSliders() {
             }
         }),
         new Button('Randomize', function () {
-            for (var i = 0; i < controlSliders.length; i++) {
-                var s = controlSliders[i];
-                s.setValue(getRandomArbitrary(s.minValue, s.maxValue));
-            }
+            alert('Functionality temporarily not supported');
         }),
         new Button('Reset', function () {
             setTheScene(presetChoice);
         }),
         new Button('Download', function () {
-            if (hideControls || confirm('FYI, you can reposition tree by dragging its base. The controls will automatically be removed from the shot. Are you sure you want to download this picture?')) {
+            if (hideControls || confirm('FYI, you can reposition tree by dragging it. Controls will automatically be removed from the image. Do you want to download this picture?')) {
                 hideControls = true;
                 redraw();
                 save('FractalTree.png');
@@ -151,15 +139,35 @@ function setupGridsAndSliders() {
         })
     ];
 
-    var grid = new Grid(mainSliders, 4, true);
+    var main = sliderFactory.getMain(iterationLimit, tree.iterations);
+    var branchSliders = sliderFactory.getBranchSliders();
+    var variation = sliderFactory.getVaration();
+    var colorSliders = sliderFactory.getColors();
+    var trunkSliders = sliderFactory.getTrunk();
+
+    var mainSliders = ([presetSlider]).concat(main);
+
+    var mainGrid = new Grid(mainSliders, 2, true);
     var colorGrid = new Grid(colorSliders, 2);
     var actionGrid = new Grid(buttons, 2, true);
+    var branchesGrid = new Grid(branchSliders, 2, true);
+    var variationGrid = new Grid(variation, 1, true);
+    var trunkGrid = new Grid(trunkSliders, 1, true);
 
-    grid.setPosition(windowMargin, 310);
-    colorGrid.setPosition(windowMargin, 80);
-    actionGrid.setPosition(350, 120);
+    var m = 10;
+    var col2 = m * 2 + branchesGrid.getWidth();
+    var row2 = 2 * m + actionGrid.getHeight();
+    var row3 = row2 + m + colorGrid.getHeight();
 
-    grids = [actionGrid, colorGrid, grid]; // Order by z index descending
+    actionGrid.setPosition(m, m);
+    colorGrid.setPosition(m, row2);
+    branchesGrid.setPosition(m, row3);
+
+    mainGrid.setPosition(m * 2 + actionGrid.getWidth(), m);
+    variationGrid.setPosition(col2, row3);
+    trunkGrid.setPosition(col2, row2);
+
+    grids = [actionGrid, trunkGrid, colorGrid, variationGrid, mainGrid, branchesGrid]; // Order by z index descending
 }
 
 var memory = [];
@@ -316,7 +324,7 @@ Slider.prototype.setValue = function (value) {
 
 // Branch
 function Branch(x, y, v, weight, color) {
-    this.x = x;
+    this.x = x; // Idea: make position of branches relative to the root position.
     this.y = y;
     this.v = v;
     this.x2 = x + v.x;
@@ -434,33 +442,26 @@ Tree.prototype.toCanvasY = function (graphicsY) {
 }
 
 Tree.prototype.render = function () {
-    var redrawing = !this.graphics || (this.repopulating && this.getPushingTheLimit());
-
     if (this.graphics) {
         imageMode(CENTER);
         image(this.graphics, this.x, this.y);
-
-        if (redrawing) {
-            var e = this.graphicsTrunkWeight / 2;
-            pop();
-            fill(this.bgColor, 150);
-            noStroke();
-            //stroke((this.bgColor + 128) % 256); // show bounding box
-            rect(this.toCanvasX(this.leastX) - e, this.toCanvasY(this.leastY) - e, this.getWidth() + 2 * e, this.getHeight() + 2 * e);
-            stroke(1); // p5js forces this (bug)
-            push();
-        }
     }
 
-    if (redrawing) {
+    if (!this.graphics || (this.repopulating && this.getPushingTheLimit())) {
+        var contrastColor = (this.bgColor + 128) % 256;
+        var e = this.graphicsTrunkWeight / 2;
         push();
-        fill(0, alpha);
-        strokeWeight(0);
-        var x = this.toCanvasX(this.leastX) + this.getWidth() / 2;
-        var y = this.toCanvasY(this.leastY) + this.getHeight() / 2;
+        fill(this.bgColor, 150);
+        noStroke();
+        //stroke(contrastColor); // show bounding box
+        rect(this.toCanvasX(this.leastX) - e, this.toCanvasY(this.leastY) - e, this.getWidth() + 2 * e, this.getHeight() + 2 * e);
+
+        var x = this.graphics ? this.toCanvasX(this.leastX) + this.getWidth() / 2 : this.x;
+        var y = this.graphics ? this.toCanvasY(this.leastY) + this.getHeight() / 2 : height / 2;
+        fill(contrastColor);
         textAlign(CENTER);
         textSize(25);
-        text('[RE-DRAWING]', x, y);
+        text(this.graphics ? '[RE-DRAWING]' : '[DRAWING]', x, y);
         pop();
     }
 }
@@ -1095,8 +1096,13 @@ var sliderFactory = (function () {
             }
         ),
         new Slider(1, 5, "Branch factor", () => tree.branchConfigs.length, updateBranchConfigsAndSliders),
+        new Slider(0, 245, "Background color", () => tree.bgColor, v => tree.bgColor = v, 0, [160, 160, 160, 200])
+    ];
+
+    var trunk = [
         new Slider(100, 500, "Trunk length", () => tree.trunkHeight, v => tree.trunkHeight = v),
-        new Slider(1, 25, "Trunk weight", () => tree.trunkWeight, v => tree.trunkWeight = v)
+        new Slider(1, 25, "Trunk weight", () => tree.trunkWeight, v => tree.trunkWeight = v),
+        new Slider(-90, 90, "Trunk angle", () => tree.trunkAngle, v => tree.trunkAngle = v, 0)
     ];
 
     var variation = [
@@ -1110,14 +1116,9 @@ var sliderFactory = (function () {
         new Slider(0, 255, "Trunk (Red)", () => tree.trunkColor[0], v => tree.trunkColor[0] = v, 0, [255, 0, 0, 220]),
         new Slider(0, 255, "Trunk (Green)", () => tree.trunkColor[1], v => tree.trunkColor[1] = v, 0, [0, 255, 0, 220]),
         new Slider(0, 255, "Trunk (Blue)", () => tree.trunkColor[2], v => tree.trunkColor[2] = v, 0, [0, 0, 255, 220]),
-
-        new Slider(0, 245, "Background color", () => tree.bgColor, v => tree.bgColor = v, 0, [160, 160, 160, 200]),
-
-        new Slider(-30, 30, "Change (Red)", () => tree.colorChange[0], v => tree.colorChange[0] = v, 0, [255, 0, 0, 220]),
-        new Slider(-30, 30, "Change (Green)", () => tree.colorChange[1], v => tree.colorChange[1] = v, 0, [0, 255, 0, 220]),
-        new Slider(-30, 30, "Change (Blue)", () => tree.colorChange[2], v => tree.colorChange[2] = v, 0, [0, 0, 255, 220]),
-
-        new Slider(-90, 90, "Trunk Angle", () => tree.trunkAngle, v => tree.trunkAngle = v, 0, [160, 160, 160, 200]),
+        new Slider(-30, 30, "Gradient (Red)", () => tree.colorChange[0], v => tree.colorChange[0] = v, 0, [255, 0, 0, 220]),
+        new Slider(-30, 30, "Gradient (Green)", () => tree.colorChange[1], v => tree.colorChange[1] = v, 0, [0, 255, 0, 220]),
+        new Slider(-30, 30, "Gradient (Blue)", () => tree.colorChange[2], v => tree.colorChange[2] = v, 0, [0, 0, 255, 220]),
     ];
 
     return {
@@ -1128,6 +1129,9 @@ var sliderFactory = (function () {
         },
         getVaration() {
             return variation;
+        },
+        getTrunk() {
+            return trunk;
         },
         getColors() {
             return colorSliders;
@@ -1140,10 +1144,10 @@ var sliderFactory = (function () {
                     var branchId = "B" + (i + 1);
 
                     return [
-                        new Slider(-180, 180, branchId + " Angle", () => tree.branchConfigs[i].angle, v => tree.branchConfigs[i].angle = v, 0, [180, 205, 228, 220]),
-                        new Slider(0.0, 1.0, branchId + " Position ratio", () => tree.branchConfigs[i].positionRatio, v => tree.branchConfigs[i].positionRatio = v, 2, [180, 205, 218, 220]),
-                        new Slider(0.1, .9, branchId + " Length ratio", () => tree.branchConfigs[i].lengthRatio, v => tree.branchConfigs[i].lengthRatio = v, 2, [180, 205, 218, 220]),
-                        new Slider(0.5, .9, branchId + " Weight ratio", () => tree.branchConfigs[i].weightRatio, v => tree.branchConfigs[i].weightRatio = v, 2, [180, 205, 218, 220])
+                        new Slider(-180, 180, branchId + " angle", () => tree.branchConfigs[i].angle, v => tree.branchConfigs[i].angle = v, 0, [180, 205, 228, 220]),
+                        new Slider(0.0, 1.0, branchId + " position ratio", () => tree.branchConfigs[i].positionRatio, v => tree.branchConfigs[i].positionRatio = v, 2, [180, 205, 218, 220]),
+                        new Slider(0.1, .9, branchId + " length ratio", () => tree.branchConfigs[i].lengthRatio, v => tree.branchConfigs[i].lengthRatio = v, 2, [180, 205, 218, 220]),
+                        new Slider(0.5, .9, branchId + " weight ratio", () => tree.branchConfigs[i].weightRatio, v => tree.branchConfigs[i].weightRatio = v, 2, [180, 205, 218, 220])
                     ];
                 })(i);
 
@@ -1154,10 +1158,10 @@ var sliderFactory = (function () {
                 var branchId = "B" + (i + 1);
 
                 var dummyGroup = [
-                    new Slider(-180, 180, branchId + " Angle", () => 12, v => { }, 0, [180, 205, 228, 220]),
-                    new Slider(0.0, 1.0, branchId + " Position ratio", () => 1, v => { }, 2, [180, 205, 218, 220]),
-                    new Slider(0.4, .9, branchId + " Length ratio", () => 0.65, v => { }, 2, [180, 205, 218, 220]),
-                    new Slider(0.5, .9, branchId + " Weight ratio", () => .7, v => { }, 2, [180, 205, 218, 220])
+                    new Slider(-180, 180, branchId + " angle", () => 12, v => { }, 0, [180, 205, 228, 220]),
+                    new Slider(0.0, 1.0, branchId + " position ratio", () => 1, v => { }, 2, [180, 205, 218, 220]),
+                    new Slider(0.4, .9, branchId + " length ratio", () => 0.65, v => { }, 2, [180, 205, 218, 220]),
+                    new Slider(0.5, .9, branchId + " weight ratio", () => .7, v => { }, 2, [180, 205, 218, 220])
                 ];
 
                 for (var j = 0; j < dummyGroup.length; j++) {
