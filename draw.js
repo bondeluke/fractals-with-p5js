@@ -133,8 +133,8 @@ function setupGridsAndSliders() {
         new Button('Center', function () {
             var mx = (width - tree.getWidth()) / 2;
             var my = (height - tree.getHeight()) / 2;
-            var cornerToRootX = tree.x - tree.toCanvasX(tree.leastX);
-            var cornerToRootY = tree.y - tree.toCanvasY(tree.leastY);
+            var cornerToRootX = tree.x - tree.toCanvasX(tree.lgx);
+            var cornerToRootY = tree.y - tree.toCanvasY(tree.lgy);
             tree.setPosition(mx + cornerToRootX, my + cornerToRootY);
         })
     ];
@@ -358,8 +358,8 @@ Tree.prototype.repopulateBranches = function () {
         var thickness = this.trunkWeight;
         var c = this.trunkColor;
         var g = this.colorChange;
-        this.leastX = this.greatestX = width;
-        this.leastY = this.greatestY = height;
+        this.lgx = this.ggx = width;  // Least graph x, greatest graph x
+        this.lgy = this.ggy = height; // Least graph y, greatest graph y
 
         var v = createVector(0, -this.trunkHeight);
         v.rotate(radians(this.trunkAngle));
@@ -417,20 +417,20 @@ Tree.prototype.createSprout = function (p, bc, color) {
 
     var b = new Branch(x, y, sv, weight, color);
 
-    this.leastX = min(min(b.x, b.x2), this.leastX);
-    this.leastY = min(min(b.y, b.y2), this.leastY);
-    this.greatestX = max(max(x, x + sv.x), this.greatestX);
-    this.greatestY = max(max(y, y + sv.y), this.greatestY);
+    this.lgx = min(min(b.x, b.x2), this.lgx);
+    this.lgy = min(min(b.y, b.y2), this.lgy);
+    this.ggx = max(max(x, x + sv.x), this.ggx);
+    this.ggy = max(max(y, y + sv.y), this.ggy);
 
     return b;
 }
 
 Tree.prototype.getWidth = function () {
-    return this.greatestX - this.leastX;
+    return this.ggx - this.lgx;
 }
 
 Tree.prototype.getHeight = function () {
-    return this.greatestY - this.leastY;
+    return this.ggy - this.lgy;
 }
 
 Tree.prototype.toCanvasX = function (graphicsX) {
@@ -454,10 +454,10 @@ Tree.prototype.render = function () {
         fill(this.bgColor, 150);
         noStroke();
         //stroke(contrastColor); // show bounding box
-        rect(this.toCanvasX(this.leastX) - e, this.toCanvasY(this.leastY) - e, this.getWidth() + 2 * e, this.getHeight() + 2 * e);
+        rect(this.toCanvasX(this.lgx) - e, this.toCanvasY(this.lgy) - e, this.getWidth() + 2 * e, this.getHeight() + 2 * e);
 
-        var x = this.graphics ? this.toCanvasX(this.leastX) + this.getWidth() / 2 : this.x;
-        var y = this.graphics ? this.toCanvasY(this.leastY) + this.getHeight() / 2 : height / 2;
+        var x = this.graphics ? this.toCanvasX(this.lgx) + this.getWidth() / 2 : this.x;
+        var y = this.graphics ? this.toCanvasY(this.lgy) + this.getHeight() / 2 : height / 2;
         fill(contrastColor);
         textAlign(CENTER);
         textSize(25);
@@ -481,8 +481,8 @@ Tree.prototype.redrawInternal = function () {
 }
 
 Tree.prototype.onMousePressed = function () {
-    this.mouseIsOverAndDown = within(mouseX, this.toCanvasX(this.leastX), this.toCanvasX(this.greatestX))
-        && within(mouseY, this.toCanvasY(this.leastY), this.toCanvasY(this.greatestY));
+    this.mouseIsOverAndDown = within(mouseX, this.toCanvasX(this.lgx), this.toCanvasX(this.ggx))
+        && within(mouseY, this.toCanvasY(this.lgy), this.toCanvasY(this.ggy));
 
     if (this.mouseIsOverAndDown) {
         this.grabX = mouseX;
