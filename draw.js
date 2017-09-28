@@ -6,7 +6,7 @@ var presetSlider;
 
 function setup() {
     frameRate(60);
-    createCanvas(1344, 756);
+    createCanvas(window.screen.width, window.screen.height);
 
     presetSlider = new Slider(0, savedTrees.length - 1, "Presets", () => presetChoice, v => setTheScene(v), 0, [5, 115, 110, 240]);
     presetSlider.setMaxValueRule(() => savedTrees.length - 1);
@@ -336,6 +336,7 @@ function Branch(x, y, v, weight, color) {
 Branch.prototype.renderTo = function (g) {
     g.strokeWeight(this.weight);
     g.stroke(this.color);
+    g.strokeCap(ROUND);
     g.line(this.x, this.y, this.x2, this.y2);
 }
 
@@ -363,7 +364,7 @@ Tree.prototype.repopulateBranches = function () {
 
         var v = createVector(0, -this.trunkHeight);
         v.rotate(radians(this.trunkAngle));
-        var trunk = new Branch(1344, 756, v, thickness, c); // Place the root in the CENTER of the graphics object.
+        var trunk = new Branch(width, height, v, thickness, c); // Place the root in the CENTER of the graphics object.
         var branchesToProcess = [trunk];
         var newBranches = [];
 
