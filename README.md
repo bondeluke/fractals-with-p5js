@@ -1,5 +1,5 @@
-# p5js
-Playing with p5js. I'll admit, this code is an absolute mess and has at least one bug. Maybe someday I'll redo this project...
+# Fractal Tree Creator
+This project was an exploration into fractal trees and p5js. Although it was a ton of fun, I'll admit, this codebase is an absolute mess and the prgram crashes frequently. Maybe someday I'll redo this project...
 
 Check out my Fractal Tree Creator over on CodePen: https://codepen.io/bondeluke/
 
