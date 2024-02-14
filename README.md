@@ -1,5 +1,5 @@
 # Fractal Tree Creator
-This project was an exploration into fractal trees and p5js. Although it was a ton of fun, I'll admit, this codebase is an absolute mess and the prgram crashes frequently. Maybe someday I'll redo this project...
+This project was an exploration into fractal trees and p5js. Although it was a ton of fun, I'll admit, this codebase is an absolute mess and the program crashes frequently. Maybe someday I'll redo this project...
 
 Check out my Fractal Tree Creator over on CodePen: https://codepen.io/bondeluke/
 
